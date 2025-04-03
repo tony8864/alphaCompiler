@@ -1,8 +1,23 @@
-if (true) {
-    x = "tony";
-    y = "rewerwe";
-    y = "rewerwe";
-    y  = 12.3;
-    z = 5;
-    // good
+local x = 5;
+local y = 10;
+
+{
+
+    local z = 13;
+
+
+
+
+
+    local prints;
+
+    {
+
+        {
+            local yy;
+            local zz;
+        }
+    }
+
+    local hehe;
 }

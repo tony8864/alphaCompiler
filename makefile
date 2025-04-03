@@ -1,7 +1,9 @@
 
-OBJECTS = scanner.o scanner_util.o string_reader.o comment_reader.o parser.o
+OBJECTS = scanner.o scanner_util.o string_reader.o comment_reader.o parser.o parser_util.o symbol_table.o
 
+SYMBOL_TABLE_C = symbol_table/symbol_table.c
 SCANNER_UTIL_C = scanner_util/scanner_util.c
+PARSER_UTIL_C = parser_util/parser_util.c
 STRING_READER_C = string_reader/string_reader.c
 COMMENT_READER_C = comment_reader/comment_reader.c
 PARSER_C_H = parser.tab.c parser.tab.h
@@ -30,5 +32,11 @@ string_reader.o: ${STRING_READER_C}
 comment_reader.o: ${COMMENT_READER_C}
 	gcc -c $< -o $@
 	
+parser_util.o: ${PARSER_UTIL_C}
+	gcc -c $< -o $@
+
+symbol_table.o: ${SYMBOL_TABLE_C}
+	gcc -c $< -o $@
+
 clean:
 	rm -f exe scanner.c ${OBJECTS} ${PARSER_C_H}

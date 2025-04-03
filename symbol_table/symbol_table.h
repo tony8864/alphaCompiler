@@ -6,12 +6,12 @@ typedef struct SymbolTable SymbolTable;
 typedef struct Variable Variable;
 typedef struct Function Function;
 
-typedef enum { GLOBAL, LOCAL, FORMAL, USERFUNC, LIBFUNC } SymbolType;
+typedef enum { GLOBAL, LOCAL_T, FORMAL, USERFUNC, LIBFUNC } SymbolType;
 
 SymbolTable*
 symtab_initialize();
 
-void
+SymbolTableEntry*
 symtab_insertVariable(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type);
 
 void

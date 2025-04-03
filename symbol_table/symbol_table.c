@@ -56,10 +56,16 @@ SymbolTableEntry*
 initializeFunctionEntry(Function* function, SymbolType type);
 
 int
-isFunctionSymbol(SymbolType symbol);
+isFunctionSymbol(SymbolType type);
 
 int
-isVariableSymbol(SymbolType symbol);
+isVariableSymbol(SymbolType type);
+
+char*
+getStringFunctionType(SymbolType type);
+
+char*
+getStringVariableType(SymbolType type);
 
 const char*
 getEntryName(SymbolTableEntry* entry);
@@ -82,7 +88,7 @@ symtab_initialize() {
     return symTable;
 }
 
-void
+SymbolTableEntry*
 symtab_insertVariable(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type) {
     Variable* variable;
     SymbolTableEntry* entry;
@@ -92,6 +98,8 @@ symtab_insertVariable(SymbolTable* table, const char* name, unsigned int line, u
 
     insertEntryInCollisionTable(table, entry, hash(name));
     insertEntryInScopeTable(table, entry, scope);
+
+    return entry;
 }
 
 void
@@ -133,9 +141,20 @@ symtab_lookupInScopeTable(SymbolTable* table, const char* name, unsigned int sco
 }
 
 void
+symtab_hide(SymbolTable* table, unsigned int scope) {
+    SymbolTableEntry* entry;
+
+    entry = table->scopeTable[scope];
+
+    while (entry) {
+        entry->isActive = 0;
+        entry = entry->scopeNext;
+    }
+}
+
+void
 symtab_printCollisionTable(SymbolTable* table) {
     SymbolTableEntry* head;
-
     for (int i = 0; i < COLLISION_TABLE_SIZE; i++) {
         head = table->collisionTable[i];
         if (head) {
@@ -151,30 +170,46 @@ symtab_printCollisionTable(SymbolTable* table) {
 }
 
 void
-symtab_hide(SymbolTable* table, unsigned int scope) {
+symtab_printScopeTable(SymbolTable* table) {
     SymbolTableEntry* entry;
 
-    entry = table->scopeTable[scope];
-
-    while (entry) {
-        entry->isActive = 0;
-        entry = entry->scopeNext;
-    }
-}
-
-void
-symtab_printScopeTable(SymbolTable* table) {
-    SymbolTableEntry* head;
-
     for (int i = 0; i < SCOPE_TABLE_SIZE; i++) {
-        head = table->scopeTable[i];
-        if (head) {
-            printf("Scope table: %d\n", i);
-            printf("%-10s %-10s %-10s %-10s\n", "Name", "Line", "Scope", "Active");
-            while (head) {
-                Variable* variable = head->value.varValue;
-                printf("%-10s %-10d %-10d %-10d\n", variable->name, variable->line, variable->scope, head->isActive);
-                head = head->scopeNext;
+        entry = table->scopeTable[i];
+        if (entry) {
+            printf("---------------------- Scope %d ----------------------\n", i);
+            while (entry) {
+                
+                if (isFunctionSymbol(entry->type)) {
+                    Function* symbol = entry->value.funcValue;
+
+                    char nameStr[30];
+                    char lineStr[12];
+                    char scopeStr[12];
+                    char funcType[12];
+                    
+                    snprintf(nameStr, sizeof(nameStr), "\"%s\"", symbol->name);
+                    snprintf(lineStr, sizeof(lineStr), "(line %d)", symbol->line);
+                    snprintf(scopeStr, sizeof(scopeStr), "(scope %d)", symbol->scope);
+                    snprintf(funcType, sizeof(funcType), "[%s]", getStringFunctionType(entry->type));
+
+                    printf("%-20s %-10s %-10s %-10s\n", nameStr, funcType, lineStr, scopeStr);
+                }
+                else {
+                    Variable* symbol = entry->value.varValue;
+    
+                    char nameStr[30];
+                    char lineStr[12];
+                    char scopeStr[12];
+                    char varType[12];
+                    
+                    snprintf(nameStr, sizeof(nameStr), "\"%s\"", symbol->name);
+                    snprintf(lineStr, sizeof(lineStr), "(line %d)", symbol->line);
+                    snprintf(scopeStr, sizeof(scopeStr), "(scope %d)", symbol->scope);
+                    snprintf(varType, sizeof(varType), "[%s]", getStringVariableType(entry->type));
+
+                    printf("%-20s %-10s %-10s %-10s\n", nameStr, varType, lineStr, scopeStr);
+                }
+                entry = entry->scopeNext;
             }
         }
     }
@@ -184,26 +219,16 @@ symtab_printScopeTable(SymbolTable* table) {
 void
 insertEntryInCollisionTable(SymbolTable* table, SymbolTableEntry* entry, unsigned int hashValue) {
     SymbolTableEntry* head;
-
     head = table->collisionTable[hashValue];
-
-    if (head) {
-        entry->collisionNext = head;
-    }
-
+    entry->collisionNext = head;
     table->collisionTable[hashValue] = entry;
 }
 
 void
 insertEntryInScopeTable(SymbolTable* table, SymbolTableEntry* entry, unsigned int scope) {
     SymbolTableEntry* head;
-
     head = table->scopeTable[scope];
-
-    if (head) {
-        entry->scopeNext = head;
-    }
-
+    entry->scopeNext = head;
     table->scopeTable[scope] = entry;
 }
 
@@ -294,19 +319,50 @@ initializeFunctionEntry(Function* function, SymbolType type) {
 }
 
 int
-isFunctionSymbol(SymbolType symbol) {
-    if (symbol == USERFUNC || symbol == LIBFUNC) {
+isFunctionSymbol(SymbolType type) {
+    if (type == USERFUNC || type == LIBFUNC) {
         return 1;
     }
     return 0;
 }
 
 int
-isVariableSymbol(SymbolType symbol) {
-    if (symbol == LOCAL || symbol == GLOBAL || symbol == FORMAL) {
+isVariableSymbol(SymbolType type) {
+    if (type == LOCAL_T || type == GLOBAL || type == FORMAL) {
         return 1;
     }
     return 0;
+}
+
+char*
+getStringFunctionType(SymbolType type) {
+    if (type == USERFUNC) {
+        return "USERFUNC";
+    }
+    else if (type == LIBFUNC) {
+        return "LIBFUNC";
+    }
+    else {
+        printf("Unrecognized function type.\n");
+        exit(1);
+    }
+}
+
+char*
+getStringVariableType(SymbolType type) {
+    if (type == LOCAL_T) {
+        return "LOCAL";
+    }
+    else if (type == GLOBAL) {
+        return "GLOBAL";
+    }
+    else if (type == FORMAL) {
+        return "FORMAL";
+    }
+    else {
+        printf("Unrecognized variable type.\n");
+        exit(1);
+    }
 }
 
 const char*

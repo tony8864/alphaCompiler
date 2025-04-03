@@ -1,5 +1,8 @@
 %{
 
+#include "parser_util/parser_util.h"
+#include "symbol_table/symbol_table.h"
+
 #include <stdio.h>
 
 int yyerror(char* errorMessage);
@@ -7,6 +10,9 @@ int yylex(void);
 
 extern FILE* yyin;
 extern int yylineno;
+
+SymbolTable* table = NULL;
+unsigned int scope = 0;
 
 %}
 
@@ -101,7 +107,10 @@ primary:
 
 lvalue:
         IDENTIFIER
-        | LOCAL IDENTIFIER
+        | LOCAL IDENTIFIER 
+                {
+                        parserUtil_handleLocalIdentifier(table, yylval.strVal, yylineno, scope, LOCAL_T);
+                }
         | DOUBLE_COLON IDENTIFIER
         | member
         ;
@@ -152,7 +161,7 @@ indexedelem:
             ;
 
 block:
-        LEFT_CURLY_BRACKET stmts RIGHT_CURLY_BRACKET
+        LEFT_CURLY_BRACKET {scope++;} stmts RIGHT_CURLY_BRACKET {scope--;}
         | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
         ;
 
@@ -206,7 +215,11 @@ int main(int argc, char **argv) {
         yyin = stdin;
     }
 
+    table = symtab_initialize();
+    parserUtil_insertLibraryFunctions(table);
     yyparse();
+    symtab_printScopeTable(table);
+
     return 0;
 }
 
