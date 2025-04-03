@@ -1,0 +1,8 @@
+if (true) {
+    x = "tony";
+    y = "rewerwe";
+    y = "rewerwe";
+    y  = 12.3;
+    z = 5;
+    // good
+}
