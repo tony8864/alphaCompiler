@@ -102,7 +102,7 @@ symtab_insertVariable(SymbolTable* table, const char* name, unsigned int line, u
     return entry;
 }
 
-void
+SymbolTableEntry*
 symtab_insertFunction(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type) {
     Function* function;
     SymbolTableEntry* entry;
@@ -112,6 +112,8 @@ symtab_insertFunction(SymbolTable* table, const char* name, unsigned int line, u
 
     insertEntryInCollisionTable(table, entry, hash(name));
     insertEntryInScopeTable(table, entry, scope);
+
+    return entry;
 }
 
 SymbolTableEntry*
@@ -150,6 +152,11 @@ symtab_hide(SymbolTable* table, unsigned int scope) {
         entry->isActive = 0;
         entry = entry->scopeNext;
     }
+}
+
+int
+symtab_isEntryActive(SymbolTableEntry* entry) {
+    return entry->isActive;
 }
 
 void

@@ -112,6 +112,9 @@ lvalue:
                         parserUtil_handleLocalIdentifier(table, yylval.strVal, yylineno, scope, LOCAL_T);
                 }
         | DOUBLE_COLON IDENTIFIER
+                {
+                        parserUtil_habdleGlobalLookup(table, yylval.strVal, yylineno);
+                }
         | member
         ;
 
@@ -161,12 +164,36 @@ indexedelem:
             ;
 
 block:
-        LEFT_CURLY_BRACKET {scope++;} stmts RIGHT_CURLY_BRACKET {scope--;}
+        LEFT_CURLY_BRACKET 
+                {scope++;} 
+        stmts 
+        RIGHT_CURLY_BRACKET 
+                {
+                        symtab_hide(table, scope);
+                        scope--;
+                }
         | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
         ;
 
 funcdef:
-        FUNCTION IDENTIFIER LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS block
+        FUNCTION IDENTIFIER 
+                {
+                        parserUtil_handleNamedFunction(table, yylval.strVal, yylineno, scope, USERFUNC);
+                }
+        LEFT_PARENTHESIS
+                {
+                        scope++;
+                }
+        idlist
+                {
+
+                }
+        RIGHT_PARENTHESIS
+                {
+                        symtab_hide(table, scope);
+                        scope--;
+                }
+        block
         | FUNCTION LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS block
         ;
 
@@ -182,6 +209,7 @@ const:
 idlist:
         IDENTIFIER
         | idlist COMMA IDENTIFIER
+        | /* empty */
         ;
 
 ifstmt:

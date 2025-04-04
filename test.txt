@@ -1,23 +1,21 @@
-local x = 5;
-local y = 10;
+local print;
+
+local x;
 
 {
+    local  x;
 
-    local z = 13;
+    function f(x) {
 
+    }
+}
 
+{
+    local  x;
 
+    function f(x) {
 
-
-    local prints;
-
-    {
-
-        {
-            local yy;
-            local zz;
-        }
     }
 
-    local hehe;
+    function ff() {}
 }

@@ -14,7 +14,7 @@ symtab_initialize();
 SymbolTableEntry*
 symtab_insertVariable(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type);
 
-void
+SymbolTableEntry*
 symtab_insertFunction(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type);
 
 SymbolTableEntry*
@@ -25,6 +25,9 @@ symtab_lookupInScopeTable(SymbolTable* table, const char* name, unsigned int sco
 
 void
 symtab_hide(SymbolTable* table, unsigned int scope);
+
+int
+symtab_isEntryActive(SymbolTableEntry* entry);
 
 void
 symtab_printCollisionTable(SymbolTable* table);
