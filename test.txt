@@ -1,21 +1,32 @@
-local print;
-
-local x;
+x = y = 1;
 
 {
-    local  x;
+    x = 2;
+    a = 3;
 
-    function f(x) {
+    function f(z) {
+        x = 4;
+        // a = 5;
 
+        y = 6;
+
+        {
+            z = 7;
+            function g() {
+                return zz;
+            }
+
+            function () {
+
+            }
+
+            function () {
+                
+            }
+
+            function () {
+                
+            }
+        }
     }
-}
-
-{
-    local  x;
-
-    function f(x) {
-
-    }
-
-    function ff() {}
 }

@@ -1,7 +1,6 @@
 %{
 
 #include "parser_util/parser_util.h"
-#include "symbol_table/symbol_table.h"
 
 #include <stdio.h>
 
@@ -10,9 +9,6 @@ int yylex(void);
 
 extern FILE* yyin;
 extern int yylineno;
-
-SymbolTable* table = NULL;
-unsigned int scope = 0;
 
 %}
 
@@ -107,13 +103,16 @@ primary:
 
 lvalue:
         IDENTIFIER
+                {
+                        parserUtil_handleIdentifier(yylval.strVal, yylineno);
+                }
         | LOCAL IDENTIFIER 
                 {
-                        parserUtil_handleLocalIdentifier(table, yylval.strVal, yylineno, scope, LOCAL_T);
+                        parserUtil_handleLocalIdentifier(yylval.strVal, yylineno);
                 }
         | DOUBLE_COLON IDENTIFIER
                 {
-                        parserUtil_habdleGlobalLookup(table, yylval.strVal, yylineno);
+                        parserUtil_habdleGlobalLookup(yylval.strVal, yylineno);
                 }
         | member
         ;
@@ -165,36 +164,56 @@ indexedelem:
 
 block:
         LEFT_CURLY_BRACKET 
-                {scope++;} 
+                {
+                        parserUtil_handleBlockEntrance();
+                } 
         stmts 
         RIGHT_CURLY_BRACKET 
                 {
-                        symtab_hide(table, scope);
-                        scope--;
+                        parserUtil_handleBlockExit();
                 }
-        | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
+        | LEFT_CURLY_BRACKET
+                {
+                        parserUtil_handleBlockEntrance();
+                }
+        RIGHT_CURLY_BRACKET
+                {
+                        parserUtil_handleBlockExit();
+                }
         ;
 
 funcdef:
         FUNCTION IDENTIFIER 
                 {
-                        parserUtil_handleNamedFunction(table, yylval.strVal, yylineno, scope, USERFUNC);
+                        parserUtil_handleNamedFunction(yylval.strVal, yylineno);
                 }
         LEFT_PARENTHESIS
                 {
-                        scope++;
+                        parserUtil_handleFuncBlockEntrance();
                 }
-        idlist
+        idlist RIGHT_PARENTHESIS funcblock
+        | FUNCTION 
                 {
+                        parserUtil_handleUnamedFunction(yylineno);
+                }
+        LEFT_PARENTHESIS
+                {
+                        parserUtil_handleFuncBlockEntrance();     
+                }
+        idlist RIGHT_PARENTHESIS funcblock
+        ;
 
-                }
-        RIGHT_PARENTHESIS
+funcblock:
+        LEFT_CURLY_BRACKET 
+        stmts 
+        RIGHT_CURLY_BRACKET 
                 {
-                        symtab_hide(table, scope);
-                        scope--;
+                        parserUtil_handleFuncBlockExit();
                 }
-        block
-        | FUNCTION LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS block
+        | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
+                {
+                        parserUtil_handleFuncBlockExit();
+                }
         ;
 
 const:
@@ -208,7 +227,13 @@ const:
 
 idlist:
         IDENTIFIER
+                {
+                        parserUtil_handleFormalArgument(yylval.strVal, yylineno);
+                }
         | idlist COMMA IDENTIFIER
+                {
+                        parserUtil_handleFormalArgument(yylval.strVal, yylineno);
+                }
         | /* empty */
         ;
 
@@ -243,11 +268,9 @@ int main(int argc, char **argv) {
         yyin = stdin;
     }
 
-    table = symtab_initialize();
-    parserUtil_insertLibraryFunctions(table);
+    parserUtil_initialize();
     yyparse();
-    symtab_printScopeTable(table);
-
+    parserUtil_cleanup();
     return 0;
 }
 

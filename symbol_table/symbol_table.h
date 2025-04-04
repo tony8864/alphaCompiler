@@ -29,6 +29,12 @@ symtab_hide(SymbolTable* table, unsigned int scope);
 int
 symtab_isEntryActive(SymbolTableEntry* entry);
 
+unsigned int
+symtab_getEntryLine(SymbolTableEntry* entry);
+
+unsigned int
+symtab_getEntryScope(SymbolTableEntry* entry);
+
 void
 symtab_printCollisionTable(SymbolTable* table);
 

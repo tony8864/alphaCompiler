@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define SCOPE_TABLE_SIZE 200
 #define COLLISION_TABLE_SIZE 200
@@ -70,8 +71,8 @@ getStringVariableType(SymbolType type);
 const char*
 getEntryName(SymbolTableEntry* entry);
 
-static unsigned int
-hash(const char* key);
+static uint32_t 
+hash(const char *key);
 
 /* ======================================== IMPLEMENTATION ======================================== */
 SymbolTable*
@@ -157,6 +158,26 @@ symtab_hide(SymbolTable* table, unsigned int scope) {
 int
 symtab_isEntryActive(SymbolTableEntry* entry) {
     return entry->isActive;
+}
+
+unsigned int
+symtab_getEntryLine(SymbolTableEntry* entry) {
+    if (isVariableSymbol(entry->type)) {
+        return entry->value.varValue->line;
+    }
+    else {
+        return entry->value.funcValue->line;
+    }
+}
+
+unsigned int
+symtab_getEntryScope(SymbolTableEntry* entry) {
+    if (isVariableSymbol(entry->type)) {
+        return entry->value.varValue->scope;
+    }
+    else {
+        return entry->value.funcValue->scope;
+    }
 }
 
 void
@@ -380,7 +401,13 @@ getEntryName(SymbolTableEntry* entry) {
     return entry->value.varValue->name;
 }
 
-static unsigned int
-hash(const char* key) {
-    return strlen(key);
+static uint32_t 
+hash(const char *key) {
+    size_t length = strlen(key);
+    uint32_t hash = 2166136261u;
+    for (size_t i = 0; i < length; ++i) {
+        hash ^= (uint8_t)key[i];
+        hash *= 16777619u;
+    }
+    return hash % COLLISION_TABLE_SIZE;
 }

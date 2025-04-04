@@ -4,15 +4,42 @@
 #include "../symbol_table/symbol_table.h"
 
 void
-parserUtil_insertLibraryFunctions(SymbolTable* table);
+parserUtil_initialize();
+
+void
+parserUtil_cleanup();
+
+void
+parserUtil_printSymbolTable();
+
+void
+parserUtil_handleBlockEntrance();
+
+void
+parserUtil_handleBlockExit();
+
+void
+parserUtil_handleFuncBlockEntrance();
+
+void
+parserUtil_handleFuncBlockExit();
 
 SymbolTableEntry*
-parserUtil_handleLocalIdentifier(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type);
+parserUtil_handleLocalIdentifier(const char* name, unsigned int line);
 
 SymbolTableEntry*
-parserUtil_handleNamedFunction(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type);
+parserUtil_handleNamedFunction(const char* name, unsigned int line);
 
 SymbolTableEntry*
-parserUtil_habdleGlobalLookup(SymbolTable* table, const char* name, unsigned int line);
+parserUtil_handleUnamedFunction(unsigned int line);
+
+SymbolTableEntry*
+parserUtil_handleFormalArgument(const char* name, unsigned int line);
+
+SymbolTableEntry*
+parserUtil_handleIdentifier(const char* name, unsigned int line);
+
+SymbolTableEntry*
+parserUtil_habdleGlobalLookup(const char* name, unsigned int line);
 
 #endif
