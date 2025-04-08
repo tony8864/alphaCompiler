@@ -1,6 +1,7 @@
 
-OBJECTS = scanner.o scanner_util.o string_reader.o comment_reader.o parser.o parser_util.o symbol_table.o scope_stack.o
+OBJECTS = scanner.o scanner_util.o string_reader.o comment_reader.o parser.o parser_util.o symbol_table.o scope_stack.o scope_space.o
 
+SCOPE_SPACE_C = scope_space/scope_space.c
 SCOPE_STACK_C = scope_stack/scope_stack.c
 SYMBOL_TABLE_C = symbol_table/symbol_table.c
 SCANNER_UTIL_C = scanner_util/scanner_util.c
@@ -40,6 +41,9 @@ symbol_table.o: ${SYMBOL_TABLE_C}
 	gcc -c $< -o $@
 
 scope_stack.o: ${SCOPE_STACK_C}
+	gcc -c $< -o $@
+
+scope_space.o: ${SCOPE_SPACE_C}
 	gcc -c $< -o $@
 
 clean:

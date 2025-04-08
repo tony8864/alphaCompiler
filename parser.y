@@ -8,6 +8,7 @@ int yyerror(char* errorMessage);
 int yylex(void);
 
 extern FILE* yyin;
+extern char* yytext;
 extern int yylineno;
 
 %}
@@ -189,7 +190,7 @@ funcdef:
                 }
         LEFT_PARENTHESIS
                 {
-                        parserUtil_handleFuncBlockEntrance();
+                        parserUtil_handleFuncFormalEntrance();
                 }
         idlist RIGHT_PARENTHESIS funcblock
         | FUNCTION 
@@ -198,19 +199,26 @@ funcdef:
                 }
         LEFT_PARENTHESIS
                 {
-                        parserUtil_handleFuncBlockEntrance();     
+                        parserUtil_handleFuncFormalEntrance();     
                 }
         idlist RIGHT_PARENTHESIS funcblock
         ;
 
 funcblock:
-        LEFT_CURLY_BRACKET 
+        LEFT_CURLY_BRACKET
+                {
+                        parserUtil_handleFuncBlockEntrance();
+                }
         stmts 
         RIGHT_CURLY_BRACKET 
                 {
                         parserUtil_handleFuncBlockExit();
                 }
-        | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET
+        | LEFT_CURLY_BRACKET
+                {
+                        parserUtil_handleFuncBlockEntrance();
+                }
+        RIGHT_CURLY_BRACKET
                 {
                         parserUtil_handleFuncBlockExit();
                 }
@@ -247,7 +255,7 @@ whilestmt:
             ;
 
 forstmt:
-        FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist SEMICOLON RIGHT_PARENTHESIS stmt
+        FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARENTHESIS stmt
         ;
 
 returnstmt:
@@ -275,6 +283,9 @@ int main(int argc, char **argv) {
 }
 
 int yyerror(char* errorMessage) {
+
     fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, errorMessage);
+    fprintf(stderr, "  Offending token: '%s'\n", yytext);
+
     return 1;
 }

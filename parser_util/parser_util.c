@@ -1,3 +1,4 @@
+#include "../scope_space/scope_space.h"
 #include "../scope_stack/scope_stack.h"
 #include "parser_util.h"
 
@@ -42,12 +43,16 @@ handleFunctionDefinition(const char* name, unsigned int line);
 char*
 generateUnnamedFunctionName();
 
+void
+reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name);
+
 /* ======================================== IMPLEMENTATION ======================================== */
 void
 parserUtil_initialize() {
     table = symtab_initialize();
     insertLibraryFunctions();
     scopeStack_initialize();
+    scopeSpace_initialize();
 }
 
 void
@@ -58,7 +63,9 @@ parserUtil_printSymbolTable() {
 void
 parserUtil_cleanup() {
     symtab_printScopeTable(table);
+    scopeStack_print();
     scopeStack_cleanup();
+    scopeSpace_cleanup();
 }
 
 void
@@ -69,21 +76,29 @@ parserUtil_handleBlockEntrance() {
 
 void
 parserUtil_handleBlockExit() {
+    symtab_hide(table, scope);
     SCOPE_EXIT();
     scopeStack_pop();
-    
+}
+
+void
+parserUtil_handleFuncFormalEntrance() {
+    SCOPE_ENTER();
+    scopeStack_push(SCOPE_FUNCTION);
+    scopeSpace_enterFuncFormalScope();
 }
 
 void
 parserUtil_handleFuncBlockEntrance() {
-    SCOPE_ENTER();
-    scopeStack_push(SCOPE_FUNCTION);
+    scopeSpace_enterScopeSpace();
 }
 
 void
 parserUtil_handleFuncBlockExit() {
+    symtab_hide(table, scope);
     SCOPE_EXIT();
     scopeStack_pop();
+    scopeSpace_exitFuncBlock();
 }
 
 SymbolTableEntry*
@@ -98,12 +113,8 @@ parserUtil_handleLocalIdentifier(const char* name, unsigned int line) {
             exit(1);
         }
         
-        if (scope == 0) {
-            entry = symtab_insertVariable(table, name, line, scope, GLOBAL);
-        }
-        else {
-            entry = symtab_insertVariable(table, name, line, scope, LOCAL_T);
-        }
+        SymbolType type = (scope == 0) ? GLOBAL : LOCAL_T;
+        entry = symtab_insertVariable(table, name, line, scope, type);
     }
 
     return entry;
@@ -157,31 +168,31 @@ parserUtil_handleFormalArgument(const char* name, unsigned int line) {
 SymbolTableEntry*
 parserUtil_handleIdentifier(const char* name, unsigned int line) {
     SymbolTableEntry* entry;
-    unsigned int currentScope;
 
-    if ((entry = symtab_lookupInScopeTable(table, name, 0)) != NULL) {
-        return entry;
-    }
-
-    for (currentScope = scope; currentScope >= 1; currentScope--) {
+    for (int currentScope = scope; currentScope >= 1; currentScope--) {
         entry = symtab_lookupInScopeTable(table, name, currentScope);
 
-        if (entry) {
-            if (scopeStack_isAccessible(currentScope, scope)) {
+        if (entry && symtab_isEntryActive(entry)) {
+            if (currentScope == scope) {
+                return entry;
+            }
+            else if (scopeStack_isAccessible(currentScope, scope)) {
                 return entry;
             }
             else {
-                printf("Error at line %d: Variable \"%s\" is inaccessible.\n", line, name);
-                exit(1);
+                reportInaccessibleVariable(line, symtab_getEntryLine(entry), name);
             }
         }
     }
 
-    entry = (scope == 0) ?
-            symtab_insertVariable(table, name, line, scope, GLOBAL) : 
-            symtab_insertVariable(table, name, line, scope, LOCAL_T);
+    entry = symtab_lookupInScopeTable(table, name, 0);
 
-    return entry;
+    if (entry) {
+        return entry;
+    }
+
+    ScopeType type = (scope == 0) ? GLOBAL : LOCAL_T;
+    return symtab_insertVariable(table, name, line, scope, type);
 }
 
 /* ======================================== STATIC DEFINITIONS ======================================== */
@@ -226,11 +237,10 @@ handleFunctionDefinition(const char* name, unsigned int line) {
 char*
 generateUnnamedFunctionName() {
     static unsigned int counter = 0;
-    char buffer[32]; // Enough for "anon_func_" + digits
+    char buffer[32];
 
     snprintf(buffer, sizeof(buffer), "anon_func_%u", counter++);
 
-    // Dynamically allocate and return the name
     char* name = malloc(strlen(buffer) + 1);
     if (!name) {
         fprintf(stderr, "Error: memory allocation failed in generateUnnamedFunctionName.\n");
@@ -239,4 +249,10 @@ generateUnnamedFunctionName() {
 
     strcpy(name, buffer);
     return name;
+}
+
+void
+reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name) {
+    fprintf(stderr, "Error at line %u: Variable \"%s\" at line %d is inaccessible.\n", line1, name, line2);
+    exit(1);
 }

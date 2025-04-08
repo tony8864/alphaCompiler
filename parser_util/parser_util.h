@@ -19,6 +19,9 @@ void
 parserUtil_handleBlockExit();
 
 void
+parserUtil_handleFuncFormalEntrance();
+
+void
 parserUtil_handleFuncBlockEntrance();
 
 void

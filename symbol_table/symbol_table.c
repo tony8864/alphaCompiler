@@ -1,3 +1,4 @@
+#include "../scope_space/scope_space.h"
 #include "symbol_table.h"
 
 #include <stdlib.h>
@@ -17,6 +18,8 @@ typedef struct Function {
 typedef struct Variable {
     const char* name;
     unsigned int line;
+    ScopeSpaceType space;
+    unsigned offset;
     unsigned int scope;
 } Variable;
 
@@ -67,6 +70,9 @@ getStringFunctionType(SymbolType type);
 
 char*
 getStringVariableType(SymbolType type);
+
+char*
+getSpaceStringType(ScopeSpaceType type);
 
 const char*
 getEntryName(SymbolTableEntry* entry);
@@ -228,14 +234,18 @@ symtab_printScopeTable(SymbolTable* table) {
                     char nameStr[30];
                     char lineStr[12];
                     char scopeStr[12];
+                    char spaceStr[40];
+                    char offsetStr[12];
                     char varType[12];
                     
                     snprintf(nameStr, sizeof(nameStr), "\"%s\"", symbol->name);
                     snprintf(lineStr, sizeof(lineStr), "(line %d)", symbol->line);
                     snprintf(scopeStr, sizeof(scopeStr), "(scope %d)", symbol->scope);
+                    snprintf(spaceStr, sizeof(spaceStr), "(space %s)", getSpaceStringType(symbol->space));
+                    snprintf(offsetStr, sizeof(offsetStr), "(offset %d)", symbol->offset);
                     snprintf(varType, sizeof(varType), "[%s]", getStringVariableType(entry->type));
 
-                    printf("%-20s %-10s %-10s %-10s\n", nameStr, varType, lineStr, scopeStr);
+                    printf("%-20s %-10s %-10s %-10s %-20s %-10s\n", nameStr, varType, lineStr, scopeStr, spaceStr, offsetStr);
                 }
                 entry = entry->scopeNext;
             }
@@ -274,6 +284,8 @@ initializeVariable(const char* name, unsigned int line, unsigned int scope) {
     variable->name = name;
     variable->line = line;
     variable->scope = scope;
+    variable->space = scopeSpace_currentScope();
+    variable->offset = scopeSpace_currentScopeOffset();
 
     return variable;
 }
@@ -317,6 +329,8 @@ initializeVariableEntry(Variable* variable, SymbolType type) {
     entry->collisionNext = NULL;
     entry->scopeNext = NULL;
     entry->type = type;
+
+    scopeSpace_incrementCurrentScopeOffset();
 
     return entry;
 }
@@ -389,6 +403,23 @@ getStringVariableType(SymbolType type) {
     }
     else {
         printf("Unrecognized variable type.\n");
+        exit(1);
+    }
+}
+
+char*
+getSpaceStringType(ScopeSpaceType type) {
+    if (type == PROGRAMVAR) {
+        return "PROGRAMVAR";
+    }
+    else if (type == FORMALARG) {
+        return "FORMALARG";
+    }
+    else if (type == FUNCTIONLOCAL) {
+        return "FUNCTIONLOCAL";
+    }
+    else {
+        printf("Unrecognized scope type.\n");
         exit(1);
     }
 }
