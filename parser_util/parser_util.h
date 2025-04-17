@@ -18,15 +18,6 @@ parserUtil_handleBlockEntrance();
 void
 parserUtil_handleBlockExit();
 
-void
-parserUtil_handleFuncFormalEntrance();
-
-void
-parserUtil_handleFuncBlockEntrance();
-
-void
-parserUtil_handleFuncBlockExit();
-
 SymbolTableEntry*
 parserUtil_handleLocalIdentifier(const char* name, unsigned int line);
 
@@ -44,5 +35,20 @@ parserUtil_handleIdentifier(const char* name, unsigned int line);
 
 SymbolTableEntry*
 parserUtil_habdleGlobalLookup(const char* name, unsigned int line);
+
+SymbolTableEntry*
+parserUtil_handleFuncPrefix(char* name, unsigned int line);
+
+void
+parserUtil_handleFuncArgs();
+
+unsigned
+parserUtil_handleFuncbody();
+
+SymbolTableEntry*
+parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, unsigned int line);
+
+char*
+parserUtil_generateUnnamedFunctionName();
 
 #endif

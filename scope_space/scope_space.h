@@ -19,7 +19,22 @@ void
 scopeSpace_incrementCurrentScopeOffset();
 
 void
+scopeSpace_pushCurrentOffset();
+
+void
 scopeSpace_enterScopeSpace();
+
+void
+scopeSpace_resetFormatArgsOffset();
+
+void
+scopeSpace_resetLocalOffset();
+
+void
+scopeSpace_exitScopeSpace();
+
+void
+scopeSpace_restoreLocalOffset();
 
 void
 scopeSpace_exitFuncBlock();

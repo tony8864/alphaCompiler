@@ -35,6 +35,12 @@ symtab_getEntryLine(SymbolTableEntry* entry);
 unsigned int
 symtab_getEntryScope(SymbolTableEntry* entry);
 
+SymbolType
+symtab_getEntryType(SymbolTableEntry* entry);
+
+void
+symtab_setFunctionLocal(SymbolTableEntry* entry, unsigned totalLocals);
+
 void
 symtab_printCollisionTable(SymbolTable* table);
 

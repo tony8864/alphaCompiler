@@ -1,5 +1,7 @@
 #include "../scope_space/scope_space.h"
 #include "../scope_stack/scope_stack.h"
+#include "../icode/icode.h"
+#include "../quad/quad.h"
 #include "parser_util.h"
 
 #include <string.h>
@@ -40,9 +42,6 @@ insertLibraryFunctions();
 SymbolTableEntry*
 handleFunctionDefinition(const char* name, unsigned int line);
 
-char*
-generateUnnamedFunctionName();
-
 void
 reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name);
 
@@ -56,14 +55,12 @@ parserUtil_initialize() {
 }
 
 void
-parserUtil_printSymbolTable() {
-    symtab_printScopeTable(table);
-}
-
-void
 parserUtil_cleanup() {
+    
     symtab_printScopeTable(table);
     scopeStack_print();
+    quad_printQuads();
+
     scopeStack_cleanup();
     scopeSpace_cleanup();
 }
@@ -79,26 +76,6 @@ parserUtil_handleBlockExit() {
     symtab_hide(table, scope);
     SCOPE_EXIT();
     scopeStack_pop();
-}
-
-void
-parserUtil_handleFuncFormalEntrance() {
-    SCOPE_ENTER();
-    scopeStack_push(SCOPE_FUNCTION);
-    scopeSpace_enterFuncFormalScope();
-}
-
-void
-parserUtil_handleFuncBlockEntrance() {
-    scopeSpace_enterScopeSpace();
-}
-
-void
-parserUtil_handleFuncBlockExit() {
-    symtab_hide(table, scope);
-    SCOPE_EXIT();
-    scopeStack_pop();
-    scopeSpace_exitFuncBlock();
 }
 
 SymbolTableEntry*
@@ -141,7 +118,7 @@ parserUtil_handleNamedFunction(const char* name, unsigned int line) {
 
 SymbolTableEntry*
 parserUtil_handleUnamedFunction(unsigned int line) {
-    return handleFunctionDefinition(generateUnnamedFunctionName(), line);
+    return handleFunctionDefinition(parserUtil_generateUnnamedFunctionName(), line);
 }
 
 SymbolTableEntry*
@@ -195,6 +172,84 @@ parserUtil_handleIdentifier(const char* name, unsigned int line) {
     return symtab_insertVariable(table, name, line, scope, type);
 }
 
+SymbolTableEntry*
+parserUtil_handleFuncPrefix(char* name, unsigned int line) {
+    SymbolTableEntry* entry;
+    Expr* result;
+
+    entry = handleFunctionDefinition(name, line);
+    result = icode_getLvalueExpr(entry);
+
+    quad_emit(funcstart_op, NULL, NULL, result, 0, line);
+
+    SCOPE_ENTER();
+    scopeStack_push(SCOPE_FUNCTION);
+    scopeSpace_pushCurrentOffset();
+    scopeSpace_enterScopeSpace();
+    scopeSpace_resetFormatArgsOffset();
+    
+    return entry;
+}
+
+void
+parserUtil_handleFuncArgs() {
+    scopeSpace_enterScopeSpace();
+    scopeSpace_resetLocalOffset();
+}
+
+unsigned
+parserUtil_handleFuncbody() {
+    unsigned totalLocals;
+
+    totalLocals = scopeSpace_currentScopeOffset();
+    
+    scopeSpace_exitScopeSpace();
+
+    return totalLocals;
+}
+
+SymbolTableEntry*
+parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, unsigned int line) {
+    Expr* result;
+
+    symtab_setFunctionLocal(funcPrefix, totalLocals);
+
+    scopeSpace_exitScopeSpace();
+    scopeSpace_restoreLocalOffset();
+
+    result = icode_getLvalueExpr(funcPrefix);
+
+    quad_emit(funcend_op, NULL, NULL, result, 0, line);
+
+    symtab_hide(table, scope);
+    SCOPE_EXIT();
+    scopeStack_pop();
+
+    return funcPrefix;
+}
+
+char*
+parserUtil_generateUnnamedFunctionName() {
+    static unsigned int counter = 0;
+    char buffer[32];
+
+    snprintf(buffer, sizeof(buffer), "anon_func_%u", counter++);
+
+    char* name = malloc(strlen(buffer) + 1);
+    if (!name) {
+        fprintf(stderr, "Error: memory allocation failed in generateUnnamedFunctionName.\n");
+        exit(1);
+    }
+
+    strcpy(name, buffer);
+    return name;
+}
+
+void
+parserUtil_printSymbolTable() {
+    symtab_printScopeTable(table);
+}
+
 /* ======================================== STATIC DEFINITIONS ======================================== */
 static int
 isSymbolLibraryFunction(const char* name) {
@@ -232,23 +287,6 @@ handleFunctionDefinition(const char* name, unsigned int line) {
     entry = symtab_insertFunction(table, name, line, scope, USERFUNC);
 
     return entry;
-}
-
-char*
-generateUnnamedFunctionName() {
-    static unsigned int counter = 0;
-    char buffer[32];
-
-    snprintf(buffer, sizeof(buffer), "anon_func_%u", counter++);
-
-    char* name = malloc(strlen(buffer) + 1);
-    if (!name) {
-        fprintf(stderr, "Error: memory allocation failed in generateUnnamedFunctionName.\n");
-        exit(1);
-    }
-
-    strcpy(name, buffer);
-    return name;
 }
 
 void

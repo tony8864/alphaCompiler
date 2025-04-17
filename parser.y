@@ -17,6 +17,8 @@ extern int yylineno;
     int     intVal;
     char*   strVal;
     double  realVal;
+    unsigned unsignedVal;
+    SymbolTableEntry* symbol;
 }
 
 
@@ -31,6 +33,10 @@ extern int yylineno;
 %token<realVal> REAL
 %token<strVal>  STRING 
 %token<strVal>  IDENTIFIER
+
+%type<strVal> funcname
+%type<unsignedVal> funcbody
+%type<symbol> funcprefix funcdef
 
 %right ASSIGN
 %left OR
@@ -183,46 +189,60 @@ block:
                 }
         ;
 
-funcdef:
-        FUNCTION IDENTIFIER 
+funcname: IDENTIFIER
                 {
-                        parserUtil_handleNamedFunction(yylval.strVal, yylineno);
+                        $$ = $1;
                 }
-        LEFT_PARENTHESIS
+        | /* empty */
                 {
-                        parserUtil_handleFuncFormalEntrance();
+                        $$ = parserUtil_generateUnnamedFunctionName();
                 }
-        idlist RIGHT_PARENTHESIS funcblock
-        | FUNCTION 
-                {
-                        parserUtil_handleUnamedFunction(yylineno);
-                }
-        LEFT_PARENTHESIS
-                {
-                        parserUtil_handleFuncFormalEntrance();     
-                }
-        idlist RIGHT_PARENTHESIS funcblock
         ;
 
-funcblock:
+funcprefix: FUNCTION funcname
+                {
+                        $$ = parserUtil_handleFuncPrefix($2, yylineno);
+                }
+        ;
+
+funcargs: LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS
+                {
+                        parserUtil_handleFuncArgs();
+                }
+        ;
+
+funcbody: funcblock
+                {
+                        $$ = parserUtil_handleFuncbody();
+                }
+        ;
+
+funcdef: funcprefix funcargs funcbody
+                {
+                        $$ = parserUtil_handleFuncdef($1, $3, yylineno);
+                }
+        ;
+
+funcblock: 
         LEFT_CURLY_BRACKET
                 {
-                        parserUtil_handleFuncBlockEntrance();
+
                 }
-        stmts 
-        RIGHT_CURLY_BRACKET 
+        stmts
+        RIGHT_CURLY_BRACKET
                 {
-                        parserUtil_handleFuncBlockExit();
+
                 }
         | LEFT_CURLY_BRACKET
                 {
-                        parserUtil_handleFuncBlockEntrance();
+
                 }
         RIGHT_CURLY_BRACKET
                 {
-                        parserUtil_handleFuncBlockExit();
+
                 }
         ;
+           
 
 const:
         INTEGER     { printf("integer: %d\n", $1); }

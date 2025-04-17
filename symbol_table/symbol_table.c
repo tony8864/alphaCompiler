@@ -13,6 +13,7 @@ typedef struct Function {
     const char* name;
     unsigned int line;
     unsigned int scope;
+    unsigned totalLocals;
 } Function;
 
 typedef struct Variable {
@@ -186,6 +187,22 @@ symtab_getEntryScope(SymbolTableEntry* entry) {
     }
 }
 
+SymbolType
+symtab_getEntryType(SymbolTableEntry* entry) {
+    return entry->type;
+}
+
+void
+symtab_setFunctionLocal(SymbolTableEntry* entry, unsigned totalLocals) {
+    if (isFunctionSymbol(entry->type)) {
+        entry->value.funcValue->totalLocals = totalLocals;
+    }
+    else {
+        printf("Cannot set function local to variable symbol.\n");
+        exit(1);
+    }
+}
+
 void
 symtab_printCollisionTable(SymbolTable* table) {
     SymbolTableEntry* head;
@@ -220,13 +237,15 @@ symtab_printScopeTable(SymbolTable* table) {
                     char lineStr[12];
                     char scopeStr[12];
                     char funcType[12];
+                    char totalLocalStr[20];
                     
                     snprintf(nameStr, sizeof(nameStr), "\"%s\"", symbol->name);
                     snprintf(lineStr, sizeof(lineStr), "(line %d)", symbol->line);
                     snprintf(scopeStr, sizeof(scopeStr), "(scope %d)", symbol->scope);
                     snprintf(funcType, sizeof(funcType), "[%s]", getStringFunctionType(entry->type));
-
-                    printf("%-20s %-10s %-10s %-10s\n", nameStr, funcType, lineStr, scopeStr);
+                    snprintf(totalLocalStr, sizeof(totalLocalStr), "(total locals %d)", symbol->totalLocals);
+                    
+                    printf("%-20s %-10s %-10s %-10s %-10s\n", nameStr, funcType, lineStr, scopeStr, totalLocalStr);
                 }
                 else {
                     Variable* symbol = entry->value.varValue;
@@ -256,18 +275,34 @@ symtab_printScopeTable(SymbolTable* table) {
 /* ======================================== STATIC DEFINITIONS ======================================== */
 void
 insertEntryInCollisionTable(SymbolTable* table, SymbolTableEntry* entry, unsigned int hashValue) {
-    SymbolTableEntry* head;
-    head = table->collisionTable[hashValue];
-    entry->collisionNext = head;
-    table->collisionTable[hashValue] = entry;
+    SymbolTableEntry* head = table->collisionTable[hashValue];
+
+    if (!head) {
+        table->collisionTable[hashValue] = entry;
+    } else {
+        while (head->collisionNext) {
+            head = head->collisionNext;
+        }
+        head->collisionNext = entry;
+    }
+
+    entry->collisionNext = NULL;
 }
 
 void
 insertEntryInScopeTable(SymbolTable* table, SymbolTableEntry* entry, unsigned int scope) {
-    SymbolTableEntry* head;
-    head = table->scopeTable[scope];
-    entry->scopeNext = head;
-    table->scopeTable[scope] = entry;
+    SymbolTableEntry* head = table->scopeTable[scope];
+
+    if (!head) {
+        table->scopeTable[scope] = entry;
+    } else {
+        while (head->scopeNext) {
+            head = head->scopeNext;
+        }
+        head->scopeNext = entry;
+    }
+
+    entry->scopeNext = NULL;
 }
 
 Variable*
@@ -304,6 +339,7 @@ initializeFunction(const char* name, unsigned int line, unsigned int scope) {
     function->name = name;
     function->line = line;
     function->scope = scope;
+    function->totalLocals = 0;
 
     return function;
 }

@@ -1,5 +1,6 @@
 %{
 
+#include "symbol_table/symbol_table.h"
 #include "scanner_util/scanner_util.h"
 #include "comment_reader/comment_reader.h"
 #include "parser.tab.h"

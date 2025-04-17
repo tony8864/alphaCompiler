@@ -1,0 +1,36 @@
+function f(a, b) {
+    local x;
+    local z;
+    t;
+
+    {
+        t1;
+        t2;
+        t3;
+
+        function g(a, b) {
+            local x;
+            local y;
+            local xx;
+            local yy;
+
+            function h(c, d) {
+                local var1;
+                local var2;
+
+                {
+                    local ext1;
+                }
+            }
+
+            local g1;
+            local g2;
+            g3;
+            g4;
+        }
+
+        t4;
+        t5;
+        t6;
+    }
+} 

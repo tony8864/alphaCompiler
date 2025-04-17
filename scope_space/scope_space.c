@@ -80,8 +80,34 @@ scopeSpace_incrementCurrentScopeOffset() {
 }
 
 void
+scopeSpace_pushCurrentOffset() {
+    PUSH_LOCAL_OFFSET();   
+}
+
+void
 scopeSpace_enterScopeSpace() {
     INCREMENT_SCOPE_COUNTER();
+}
+
+void
+scopeSpace_resetFormatArgsOffset() {
+    RESET_FORMAL_OFFSET();
+}
+
+void
+scopeSpace_resetLocalOffset() {
+    RESET_LOCAL_OFFSET();
+}
+
+void
+scopeSpace_exitScopeSpace() {
+    assert(scopeSpaceCounter > 1);
+    DECREMENT_SCOPE_COUNTER();
+}
+
+void
+scopeSpace_restoreLocalOffset() {
+    POP_AND_RESTORE_LOCAL_OFFSET();
 }
 
 void
