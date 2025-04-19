@@ -1,2 +1,2 @@
-assign x 5 
-assign _t0 x 
+tablesetelem x t 5
+tablegetelem _t0 t 5

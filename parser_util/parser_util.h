@@ -61,4 +61,22 @@ parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line);
 Expr*
 parserUtil_newConstnumExpr(double i);
 
+Call*
+parserUtil_handleMethodCall(char* identifier, Expr* elist);
+
+Expr*
+parserUtil_handleCall(Expr* call, Expr* elist, unsigned int line);
+
+Expr*
+parserUtil_handleCallSuffix(Expr* lv, Call* callsuffix, unsigned int line);
+
+Call*
+parserUtil_handleNormCall(Expr* elist);
+
+Expr*
+parserUtil_handleCallFuncdef(SymbolTableEntry* funcdef, Expr* elist, unsigned int line);
+
+Expr*
+parserUtil_handleElist(Expr* elist, Expr* e);
+
 #endif

@@ -27,12 +27,34 @@ typedef enum {
 } ExprType;
 
 typedef struct Expr Expr;
+typedef struct Call Call;
 
 Expr*
 icode_getLvalueExpr(SymbolTableEntry* entry);
 
 Expr*
 icode_newExpr(ExprType type);
+
+Call*
+icode_newCall();
+
+void
+icode_setEList(Call* c, Expr* elist);
+
+void
+icode_setMethod(Call* c, unsigned char m);
+
+void
+icode_setName(Call* c, char* name);
+
+unsigned char
+icode_getMethod(Call* c);
+
+char*
+icode_getName(Call* c);
+
+Expr*
+icode_getElist(Call* c);
 
 Expr*
 icode_newConstString(char* s);
@@ -49,6 +71,9 @@ icode_setExprIndex(Expr* e, Expr* index);
 void
 icode_setExprType(Expr* e, ExprType type);
 
+void
+icode_setExprNext(Expr* e, Expr* next);
+
 SymbolTableEntry*
 icode_getExprEntry(Expr* e);
 
@@ -58,10 +83,19 @@ icode_getExprType(Expr* e);
 Expr*
 icode_getExprIndex(Expr* e);
 
+Expr*
+icode_getExprNext(Expr* e);
+
 char*
 icode_getStringConst(Expr* e);
 
 double
 icode_getNumConst(Expr* e);
+
+Expr*
+icode_reverseExprList(Expr* head);
+
+Expr*
+icode_insertFirst(Expr* elist, Expr* e);
 
 #endif

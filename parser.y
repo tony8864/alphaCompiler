@@ -20,6 +20,7 @@ extern int yylineno;
     unsigned unsignedVal;
     SymbolTableEntry* symbol;
     Expr* exprVal;
+    Call* callVal;
 }
 
 
@@ -38,7 +39,8 @@ extern int yylineno;
 %type<strVal> funcname
 %type<unsignedVal> funcbody
 %type<symbol> funcprefix funcdef
-%type<exprVal> lvalue member expr primary const
+%type<exprVal> lvalue member expr primary const elist call
+%type<callVal> callsuffix normcall methodcall
 
 %right ASSIGN
 %left OR
@@ -78,10 +80,7 @@ stmt:
         ;
 
 expr:
-        lvalue ASSIGN expr
-                {
-                        $$ = parserUtil_handleAssignExpr($1, $3, yylineno);
-                }
+        lvalue ASSIGN expr          { $$ = parserUtil_handleAssignExpr($1, $3, yylineno); }
         | expr PLUS expr            { printf("expr + expr\n"); }
         | expr MINUS expr           { printf("expr - expr\n"); }
         | expr MULTIPLY expr        { printf("expr * expr\n"); }
@@ -106,70 +105,40 @@ expr:
         ;
 
 primary:
-        lvalue
-                {       
-                        $$ = parserUtil_handlePrimary($1, yylineno);
-                }
+        lvalue { $$ = parserUtil_handlePrimary($1, yylineno); }
         | call
         | objectdef
         | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
-        | const
-                {
-                        $$ = $1;
-                }
+        | const { $$ = $1; }
         ;
 
 lvalue:
-        IDENTIFIER
-                {
-                        $$ = parserUtil_handleIdentifier($1, yylineno);
-                }
-        | LOCAL IDENTIFIER 
-                {
-                        $$ = parserUtil_handleLocalIdentifier($2, yylineno);
-                }
-        | DOUBLE_COLON IDENTIFIER
-                {
-                        $$ = parserUtil_habdleGlobalLookup($2, yylineno);
-                }
+        IDENTIFIER                      { $$ = parserUtil_handleIdentifier($1, yylineno); }
+        | LOCAL IDENTIFIER              { $$ = parserUtil_handleLocalIdentifier($2, yylineno); }
+        | DOUBLE_COLON IDENTIFIER       { $$ = parserUtil_habdleGlobalLookup($2, yylineno); }
         | member
         ;
 
 member:
-        lvalue DOT IDENTIFIER
-                {
-                        $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno);
-                }
-        | lvalue LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET
-                {
-                        $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno);
-                }
+        lvalue DOT IDENTIFIER { $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno); }
+        | lvalue LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET { $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno); }
         | call DOT IDENTIFIER
         | call LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET
         ;
 
 call:
-        call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
-        | lvalue callsuffix
-        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
+        call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS                                           { $$ = parserUtil_handleCall($1, $3, yylineno); }
+        | lvalue callsuffix                                                                     { $$ = parserUtil_handleCallSuffix($1, $2, yylineno); }
+        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS LEFT_PARENTHESIS elist RIGHT_PARENTHESIS   { $$ = parserUtil_handleCallFuncdef($2, $5, yylineno); }
         ;
 
-callsuffix:
-            normcall
-            | methodcall
-            ;
-
-normcall:
-            LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
-            ;
-
-methodcall:
-            DOT_DOT IDENTIFIER LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
-            ;
+callsuffix:      normcall { $$ = $1; } | methodcall { $$ = $1; };
+normcall:        LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall($2); };
+methodcall:      DOT_DOT IDENTIFIER LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleMethodCall($2, $4); };
 
 elist:
-        expr
-        | elist COMMA expr
+        expr                    { $$ = $1; }
+        | elist COMMA expr      { $$ = parserUtil_handleElist($1, $3); }
         ;
 
 objectdef:
@@ -187,85 +156,25 @@ indexedelem:
             ;
 
 block:
-        LEFT_CURLY_BRACKET 
-                {
-                        parserUtil_handleBlockEntrance();
-                } 
+        LEFT_CURLY_BRACKET      { parserUtil_handleBlockEntrance(); } 
         stmts 
-        RIGHT_CURLY_BRACKET 
-                {
-                        parserUtil_handleBlockExit();
-                }
-        | LEFT_CURLY_BRACKET
-                {
-                        parserUtil_handleBlockEntrance();
-                }
-        RIGHT_CURLY_BRACKET
-                {
-                        parserUtil_handleBlockExit();
-                }
+        RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); }
+        | LEFT_CURLY_BRACKET    { parserUtil_handleBlockEntrance(); }
+        RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); }
         ;
 
-funcname: IDENTIFIER
-                {
-                        $$ = $1;
-                }
-        | /* empty */
-                {
-                        $$ = parserUtil_generateUnnamedFunctionName();
-                }
+funcname: IDENTIFIER    { $$ = $1; }
+        | /* empty */   { $$ = parserUtil_generateUnnamedFunctionName(); }
         ;
 
-funcprefix: FUNCTION funcname
-                {
-                        $$ = parserUtil_handleFuncPrefix($2, yylineno);
-                }
-        ;
-
-funcargs: LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS
-                {
-                        parserUtil_handleFuncArgs();
-                }
-        ;
-
-funcbody: funcblock
-                {
-                        $$ = parserUtil_handleFuncbody();
-                }
-        ;
-
-funcdef: funcprefix funcargs funcbody
-                {
-                        $$ = parserUtil_handleFuncdef($1, $3, yylineno);
-                }
-        ;
-
-funcblock: 
-        LEFT_CURLY_BRACKET
-                {
-
-                }
-        stmts
-        RIGHT_CURLY_BRACKET
-                {
-
-                }
-        | LEFT_CURLY_BRACKET
-                {
-
-                }
-        RIGHT_CURLY_BRACKET
-                {
-
-                }
-        ;
+funcprefix:     FUNCTION funcname                               { $$ = parserUtil_handleFuncPrefix($2, yylineno); };
+funcargs:       LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS       { parserUtil_handleFuncArgs(); };
+funcbody:       funcblock                                       { $$ = parserUtil_handleFuncbody(); };
+funcdef:        funcprefix funcargs funcbody                    { $$ = parserUtil_handleFuncdef($1, $3, yylineno); };
+funcblock:      LEFT_CURLY_BRACKET stmts RIGHT_CURLY_BRACKET | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET ;
            
-
 const:
-        INTEGER
-                {
-                        $$ = parserUtil_newConstnumExpr($1 * 1.0);
-                }
+        INTEGER { $$ = parserUtil_newConstnumExpr($1 * 1.0); }
         | REAL      { printf("real: %f\n", $1); }
         | STRING    { printf("string: %s\n", $1); }
         | NIL       { printf("nil\n"); }
@@ -274,14 +183,8 @@ const:
         ;
 
 idlist:
-        IDENTIFIER
-                {
-                        parserUtil_handleFormalArgument(yylval.strVal, yylineno);
-                }
-        | idlist COMMA IDENTIFIER
-                {
-                        parserUtil_handleFormalArgument(yylval.strVal, yylineno);
-                }
+        IDENTIFIER                      { parserUtil_handleFormalArgument(yylval.strVal, yylineno); }
+        | idlist COMMA IDENTIFIER       { parserUtil_handleFormalArgument(yylval.strVal, yylineno); }
         | /* empty */
         ;
 

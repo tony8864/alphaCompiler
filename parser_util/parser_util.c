@@ -59,6 +59,12 @@ Expr*
 emit_iftableitem(Expr* e, unsigned int line);
 
 Expr*
+member_item(Expr* lv, char* identifier, unsigned int line);
+
+Expr*
+make_call(Expr* lv, Expr* reversed_elist, unsigned int line);
+
+Expr*
 assignToTableItem(Expr* lv, Expr* e, unsigned int line);
 
 Expr*
@@ -259,15 +265,7 @@ parserUtil_generateUnnamedFunctionName() {
 
 Expr*
 parserUtil_handleLvalueIdentifierTableItem(Expr* lv, char* identifier, unsigned int line) {
-    Expr* tableItem;
-
-    lv = emit_iftableitem(lv, line);
-    tableItem = icode_newExpr(tableitem_e);
-
-    icode_setExprEntry(tableItem, icode_getExprEntry(lv));
-    icode_setExprIndex(tableItem, icode_newConstString(identifier));
-
-    return tableItem;
+    return member_item(lv, identifier, line);
 }
 
 Expr*
@@ -308,6 +306,80 @@ parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line) {
 Expr*
 parserUtil_newConstnumExpr(double i) {
     return icode_newConstNum(i);
+}
+
+Call*
+parserUtil_handleMethodCall(char* identifier, Expr* elist) {
+    Call* call;
+
+    call = icode_newCall();
+
+    icode_setEList(call, elist);
+    icode_setMethod(call, 1);
+    icode_setName(call, strdup(identifier));
+
+    return call;
+}
+
+Expr*
+parserUtil_handleCall(Expr* call, Expr* elist, unsigned int line) {
+    return make_call(call, elist, line);
+}
+
+Expr*
+parserUtil_handleCallSuffix(Expr* lv, Call* callsuffix, unsigned int line) {
+    
+    Expr* call;
+    Expr* elist;
+
+    lv = emit_iftableitem(lv, line);
+
+    if (icode_getMethod(callsuffix)) {
+        elist = icode_getElist(callsuffix);
+        elist = icode_insertFirst(elist, lv);
+        icode_setEList(callsuffix, elist);
+        lv = emit_iftableitem(member_item(lv, icode_getName(callsuffix),line), line);
+    }
+    
+    elist = icode_getElist(callsuffix);
+    call = make_call(lv, elist, line);
+
+    return call;
+}
+
+Call*
+parserUtil_handleNormCall(Expr* elist) {
+    Call* call;
+
+    call = icode_newCall();
+    icode_setEList(call, elist);
+    icode_setMethod(call, 0);
+    icode_setName(call, NULL);
+
+    return call;
+}
+
+Expr*
+parserUtil_handleCallFuncdef(SymbolTableEntry* funcdef, Expr* elist, unsigned int line) {
+    Expr* func;
+
+    func = icode_newExpr(programfunc_e);
+    icode_setExprEntry(func, funcdef);
+    
+    return make_call(func, elist, line);
+}
+
+Expr*
+parserUtil_handleElist(Expr* elist, Expr* e) {
+    Expr* tmp;
+
+    tmp = elist;
+    while(icode_getExprNext(tmp)) {
+        tmp = icode_getExprNext(tmp);
+    }
+    icode_setExprNext(tmp, e);
+
+    return elist;
 }
 
 void
@@ -412,6 +484,41 @@ emit_iftableitem(Expr* e, unsigned int line) {
     quad_emit(tablegetelem_op, e, index, result, 0, line);
 
     return result;
+}
+
+Expr*
+make_call(Expr* lv, Expr* elist, unsigned int line) {
+    Expr* func;
+    Expr* result;
+    Expr* reversed_elist;
+
+    func = emit_iftableitem(lv, line);
+    reversed_elist = icode_reverseExprList(elist);
+
+    while(reversed_elist) {
+        quad_emit(param_op, reversed_elist, NULL, NULL, 0, line);
+        reversed_elist = icode_getExprNext(reversed_elist);
+    }
+
+    quad_emit(call_op, func, NULL, NULL, 0, line);
+    result = icode_newExpr(var_e);
+    icode_setExprEntry(result, newTemp(line));
+    quad_emit(getretval_op, NULL, NULL, result, 0, line);
+
+    return result;
+}
+
+Expr*
+member_item(Expr* lv, char* identifier, unsigned int line) {
+    Expr* tableItem;
+
+    lv = emit_iftableitem(lv, line);
+    tableItem = icode_newExpr(tableitem_e);
+
+    icode_setExprEntry(tableItem, icode_getExprEntry(lv));
+    icode_setExprIndex(tableItem, icode_newConstString(identifier));
+
+    return tableItem;
 }
 
 Expr*
