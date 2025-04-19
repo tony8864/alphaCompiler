@@ -99,6 +99,12 @@ icode_setExprIndex(Expr* e, Expr* index) {
     e->index = index;
 }
 
+void
+icode_setExprType(Expr* e, ExprType type) {
+    assert(e);
+    e->type = type;
+}
+
 SymbolTableEntry*
 icode_getExprEntry(Expr* e) {
     assert(e);

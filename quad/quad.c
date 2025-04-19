@@ -172,6 +172,7 @@ get_expr_name(Expr* e) {
     switch (icode_getExprType(e)) {
         case var_e:
         case tableitem_e:
+        case assignexpr_e:
         case programfunc_e:
             return get_symtab_expr_name(e);
         case conststring_e:

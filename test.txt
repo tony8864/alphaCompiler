@@ -1,16 +1,1 @@
-t[5];
-t.a;
-function g() {
-    x;
-    y;
-    z;
-
-    function f() {
-        local x;
-        local y;
-        local z;
-    }
-
-    t1;
-    h;
-}
+x = 5;

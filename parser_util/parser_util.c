@@ -58,6 +58,12 @@ newTemp(unsigned int line);
 Expr*
 emit_iftableitem(Expr* e, unsigned int line);
 
+Expr*
+assignToTableItem(Expr* lv, Expr* e, unsigned int line);
+
+Expr*
+assignToLvalue(Expr* lv, Expr* e, unsigned int line);
+
 /* ======================================== IMPLEMENTATION ======================================== */
 void
 parserUtil_initialize() {
@@ -286,6 +292,20 @@ parserUtil_handlePrimary(Expr* lv, unsigned int line) {
 }
 
 Expr*
+parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line) {
+    Expr* assignExpr;
+
+    if (icode_getExprType(lv) == tableitem_e) {
+        assignExpr = assignToTableItem(lv, e, line);
+    }
+    else {
+        assignExpr = assignToLvalue(lv, e, line);
+    }
+
+    return assignExpr;
+}
+
+Expr*
 parserUtil_newConstnumExpr(double i) {
     return icode_newConstNum(i);
 }
@@ -392,4 +412,30 @@ emit_iftableitem(Expr* e, unsigned int line) {
     quad_emit(tablegetelem_op, e, index, result, 0, line);
 
     return result;
+}
+
+Expr*
+assignToTableItem(Expr* lv, Expr* e, unsigned int line) {
+    Expr* index;
+    Expr* assignExpr;
+
+    index = icode_getExprIndex(lv);
+
+    quad_emit(tablesetelem_op, lv, index, e, 0, line);
+    assignExpr = emit_iftableitem(lv, line);
+    icode_setExprType(assignExpr, assignexpr_e);
+
+    return assignExpr;
+}
+
+Expr*
+assignToLvalue(Expr* lv, Expr* e, unsigned int line) {
+    Expr* assignExpr;
+
+    quad_emit(assign_op, e, NULL, lv, 0, line);
+    assignExpr = icode_newExpr(assignexpr_e);
+    icode_setExprEntry(assignExpr, newTemp(line));
+    quad_emit(assign_op, lv, NULL, assignExpr, 0, line);
+
+    return assignExpr;
 }

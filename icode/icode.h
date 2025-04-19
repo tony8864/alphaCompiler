@@ -46,6 +46,9 @@ icode_setExprEntry(Expr* e, SymbolTableEntry* entry);
 void
 icode_setExprIndex(Expr* e, Expr* index);
 
+void
+icode_setExprType(Expr* e, ExprType type);
+
 SymbolTableEntry*
 icode_getExprEntry(Expr* e);
 

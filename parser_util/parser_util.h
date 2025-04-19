@@ -56,6 +56,9 @@ char*
 parserUtil_generateUnnamedFunctionName();
 
 Expr*
+parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line);
+
+Expr*
 parserUtil_newConstnumExpr(double i);
 
 #endif

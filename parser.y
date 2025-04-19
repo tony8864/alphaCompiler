@@ -78,7 +78,10 @@ stmt:
         ;
 
 expr:
-        lvalue ASSIGN expr          { printf("lval = expr\n"); }
+        lvalue ASSIGN expr
+                {
+                        $$ = parserUtil_handleAssignExpr($1, $3, yylineno);
+                }
         | expr PLUS expr            { printf("expr + expr\n"); }
         | expr MINUS expr           { printf("expr - expr\n"); }
         | expr MULTIPLY expr        { printf("expr * expr\n"); }
