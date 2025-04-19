@@ -29,6 +29,9 @@ symtab_hide(SymbolTable* table, unsigned int scope);
 int
 symtab_isEntryActive(SymbolTableEntry* entry);
 
+const char*
+symtab_getEntryName(SymbolTableEntry* entry);
+
 unsigned int
 symtab_getEntryLine(SymbolTableEntry* entry);
 

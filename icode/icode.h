@@ -31,4 +31,34 @@ typedef struct Expr Expr;
 Expr*
 icode_getLvalueExpr(SymbolTableEntry* entry);
 
+Expr*
+icode_newExpr(ExprType type);
+
+Expr*
+icode_newConstString(char* s);
+
+Expr*
+icode_newConstNum(double i);
+
+void
+icode_setExprEntry(Expr* e, SymbolTableEntry* entry);
+
+void
+icode_setExprIndex(Expr* e, Expr* index);
+
+SymbolTableEntry*
+icode_getExprEntry(Expr* e);
+
+ExprType
+icode_getExprType(Expr* e);
+
+Expr*
+icode_getExprIndex(Expr* e);
+
+char*
+icode_getStringConst(Expr* e);
+
+double
+icode_getNumConst(Expr* e);
+
 #endif

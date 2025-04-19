@@ -26,6 +26,7 @@ static const char* libraryFunctions[] = {
 static const int NUM_LIBRARY_FUNCTIONS = sizeof(libraryFunctions) / sizeof(libraryFunctions[0]);
 
 static unsigned int scope = 0;
+static unsigned int tempCounter = 0;
 
 #define SCOPE_ENTER()   (scope++)
 #define SCOPE_EXIT()    (scope--)
@@ -45,10 +46,23 @@ handleFunctionDefinition(const char* name, unsigned int line);
 void
 reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name);
 
+char*
+newTempName();
+
+void
+resetTemp();
+
+SymbolTableEntry*
+newTemp(unsigned int line);
+
+Expr*
+emit_iftableitem(Expr* e, unsigned int line);
+
 /* ======================================== IMPLEMENTATION ======================================== */
 void
 parserUtil_initialize() {
     table = symtab_initialize();
+  
     insertLibraryFunctions();
     scopeStack_initialize();
     scopeSpace_initialize();
@@ -60,6 +74,8 @@ parserUtil_cleanup() {
     symtab_printScopeTable(table);
     scopeStack_print();
     quad_printQuads();
+
+    quad_writeQuadsToFile("quads.txt");
 
     scopeStack_cleanup();
     scopeSpace_cleanup();
@@ -78,7 +94,37 @@ parserUtil_handleBlockExit() {
     scopeStack_pop();
 }
 
-SymbolTableEntry*
+Expr*
+parserUtil_handleIdentifier(const char* name, unsigned int line) {
+    SymbolTableEntry* entry;
+
+    for (int currentScope = scope; currentScope >= 1; currentScope--) {
+        entry = symtab_lookupInScopeTable(table, name, currentScope);
+
+        if (entry && symtab_isEntryActive(entry)) {
+            if (currentScope == scope) {
+                return icode_getLvalueExpr(entry);
+            }
+            else if (scopeStack_isAccessible(currentScope, scope)) {
+                return icode_getLvalueExpr(entry);
+            }
+            else {
+                reportInaccessibleVariable(line, symtab_getEntryLine(entry), name);
+            }
+        }
+    }
+
+    entry = symtab_lookupInScopeTable(table, name, 0);
+
+    if (entry) {
+        return icode_getLvalueExpr(entry);
+    }
+
+    ScopeType type = (scope == 0) ? GLOBAL : LOCAL_T;
+    return icode_getLvalueExpr(symtab_insertVariable(table, name, line, scope, type));
+}
+
+Expr*
 parserUtil_handleLocalIdentifier(const char* name, unsigned int line) {
     SymbolTableEntry* entry;
 
@@ -94,10 +140,10 @@ parserUtil_handleLocalIdentifier(const char* name, unsigned int line) {
         entry = symtab_insertVariable(table, name, line, scope, type);
     }
 
-    return entry;
+    return icode_getLvalueExpr(entry);
 }
 
-SymbolTableEntry*
+Expr*
 parserUtil_habdleGlobalLookup(const char* name, unsigned int line) {
     SymbolTableEntry* entry;
 
@@ -108,17 +154,7 @@ parserUtil_habdleGlobalLookup(const char* name, unsigned int line) {
         exit(1);
     }
 
-    return entry;
-}
-
-SymbolTableEntry*
-parserUtil_handleNamedFunction(const char* name, unsigned int line) {
-    return handleFunctionDefinition(name, line);
-}
-
-SymbolTableEntry*
-parserUtil_handleUnamedFunction(unsigned int line) {
-    return handleFunctionDefinition(parserUtil_generateUnnamedFunctionName(), line);
+    return icode_getLvalueExpr(entry);
 }
 
 SymbolTableEntry*
@@ -140,36 +176,6 @@ parserUtil_handleFormalArgument(const char* name, unsigned int line) {
     entry = symtab_insertVariable(table, name, line, scope, FORMAL);
 
     return entry;
-}
-
-SymbolTableEntry*
-parserUtil_handleIdentifier(const char* name, unsigned int line) {
-    SymbolTableEntry* entry;
-
-    for (int currentScope = scope; currentScope >= 1; currentScope--) {
-        entry = symtab_lookupInScopeTable(table, name, currentScope);
-
-        if (entry && symtab_isEntryActive(entry)) {
-            if (currentScope == scope) {
-                return entry;
-            }
-            else if (scopeStack_isAccessible(currentScope, scope)) {
-                return entry;
-            }
-            else {
-                reportInaccessibleVariable(line, symtab_getEntryLine(entry), name);
-            }
-        }
-    }
-
-    entry = symtab_lookupInScopeTable(table, name, 0);
-
-    if (entry) {
-        return entry;
-    }
-
-    ScopeType type = (scope == 0) ? GLOBAL : LOCAL_T;
-    return symtab_insertVariable(table, name, line, scope, type);
 }
 
 SymbolTableEntry*
@@ -245,6 +251,45 @@ parserUtil_generateUnnamedFunctionName() {
     return name;
 }
 
+Expr*
+parserUtil_handleLvalueIdentifierTableItem(Expr* lv, char* identifier, unsigned int line) {
+    Expr* tableItem;
+
+    lv = emit_iftableitem(lv, line);
+    tableItem = icode_newExpr(tableitem_e);
+
+    icode_setExprEntry(tableItem, icode_getExprEntry(lv));
+    icode_setExprIndex(tableItem, icode_newConstString(identifier));
+
+    return tableItem;
+}
+
+Expr*
+parserUtil_handleLvalueExprTableItem(Expr* lv, Expr* e, unsigned int line) {
+
+    Expr* tableItem;
+
+    lv = emit_iftableitem(lv, line);
+    tableItem = icode_newExpr(tableitem_e);
+    
+    icode_setExprEntry(tableItem, icode_getExprEntry(lv));
+    icode_setExprIndex(tableItem, e);
+
+    return tableItem;
+}
+
+Expr*
+parserUtil_handlePrimary(Expr* lv, unsigned int line) {
+    Expr* e;
+    e = emit_iftableitem(lv, line);
+    return e;
+}
+
+Expr*
+parserUtil_newConstnumExpr(double i) {
+    return icode_newConstNum(i);
+}
+
 void
 parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);
@@ -293,4 +338,58 @@ void
 reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name) {
     fprintf(stderr, "Error at line %u: Variable \"%s\" at line %d is inaccessible.\n", line1, name, line2);
     exit(1);
+}
+
+char*
+newTempName() {
+    char* name;
+
+    name = malloc(16);
+
+    if (!name) {
+        printf("Error allocating memory for temp var name.\n");
+        exit(1);
+    }
+
+    sprintf(name, "_t%u", tempCounter++);
+    return name;
+}
+
+void
+resetTemp() {
+    tempCounter = 0;
+}
+
+SymbolTableEntry*
+newTemp(unsigned int line) {
+    char* name;
+    SymbolTableEntry* entry;
+
+    name = newTempName();
+
+    SymbolType type = (scope == 0) ? GLOBAL : LOCAL_T;
+    entry = symtab_insertVariable(table, name, line, scope, type);
+
+    return entry;
+}
+
+Expr*
+emit_iftableitem(Expr* e, unsigned int line) {
+
+    if (icode_getExprType(e) != tableitem_e) {
+        return e;
+    }
+
+    Expr* result;
+    Expr* index;
+    SymbolTableEntry* entry;
+
+    result = icode_newExpr(var_e);
+    entry = newTemp(line);
+    index = icode_getExprIndex(e);    
+
+    icode_setExprEntry(result, entry);
+    quad_emit(tablegetelem_op, e, index, result, 0, line);
+
+    return result;
 }

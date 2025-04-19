@@ -167,6 +167,16 @@ symtab_isEntryActive(SymbolTableEntry* entry) {
     return entry->isActive;
 }
 
+const char*
+symtab_getEntryName(SymbolTableEntry* entry) {
+    if (isVariableSymbol(entry->type)) {
+        return entry->value.varValue->name;
+    }
+    else {
+        return entry->value.funcValue->name;
+    }
+}
+
 unsigned int
 symtab_getEntryLine(SymbolTableEntry* entry) {
     if (isVariableSymbol(entry->type)) {
@@ -244,7 +254,7 @@ symtab_printScopeTable(SymbolTable* table) {
                     snprintf(scopeStr, sizeof(scopeStr), "(scope %d)", symbol->scope);
                     snprintf(funcType, sizeof(funcType), "[%s]", getStringFunctionType(entry->type));
                     snprintf(totalLocalStr, sizeof(totalLocalStr), "(total locals %d)", symbol->totalLocals);
-                    
+
                     printf("%-20s %-10s %-10s %-10s %-10s\n", nameStr, funcType, lineStr, scopeStr, totalLocalStr);
                 }
                 else {

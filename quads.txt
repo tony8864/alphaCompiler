@@ -1,0 +1,6 @@
+tablegetelem _t0 t 5
+tablegetelem _t1 t a
+funcstart g  
+funcstart f  
+funcend f  
+funcend g  

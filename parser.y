@@ -19,6 +19,7 @@ extern int yylineno;
     double  realVal;
     unsigned unsignedVal;
     SymbolTableEntry* symbol;
+    Expr* exprVal;
 }
 
 
@@ -37,6 +38,7 @@ extern int yylineno;
 %type<strVal> funcname
 %type<unsignedVal> funcbody
 %type<symbol> funcprefix funcdef
+%type<exprVal> lvalue member expr primary const
 
 %right ASSIGN
 %left OR
@@ -89,7 +91,7 @@ expr:
         | expr EQUAL expr           { printf("expr == expr\n"); }
         | expr NOT_EQUAL expr       { printf("expr != expr\n"); }
         | expr AND expr             { printf("expr and expr\n"); }
-        | expr OR expr              { printf("exor or expr\n"); }
+        | expr OR expr              { printf("expr or expr\n"); }
         | LEFT_PARENTHESIS expr RIGHT_PARENTHESIS   { printf("(expr )\n"); }
         | MINUS expr %prec UMINUS   { printf("minus expr\n"); }
         | NOT expr                  { printf("not expr\n"); }
@@ -97,36 +99,48 @@ expr:
         | lvalue PLUS_PLUS          { printf("lval++\n"); }
         | MINUS_MINUS lvalue        { printf("--lval\n"); }
         | lvalue MINUS_MINUS        { printf("lval--\n"); }
-        | primary                   { printf("primary\n"); }
+        | primary                   { $$ = $1; }
         ;
 
 primary:
-        lvalue  { printf("lval\n"); }
+        lvalue
+                {       
+                        $$ = parserUtil_handlePrimary($1, yylineno);
+                }
         | call
         | objectdef
         | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
-        | const { printf("const\n"); }
+        | const
+                {
+                        $$ = $1;
+                }
         ;
 
 lvalue:
         IDENTIFIER
                 {
-                        parserUtil_handleIdentifier(yylval.strVal, yylineno);
+                        $$ = parserUtil_handleIdentifier($1, yylineno);
                 }
         | LOCAL IDENTIFIER 
                 {
-                        parserUtil_handleLocalIdentifier(yylval.strVal, yylineno);
+                        $$ = parserUtil_handleLocalIdentifier($2, yylineno);
                 }
         | DOUBLE_COLON IDENTIFIER
                 {
-                        parserUtil_habdleGlobalLookup(yylval.strVal, yylineno);
+                        $$ = parserUtil_habdleGlobalLookup($2, yylineno);
                 }
         | member
         ;
 
 member:
         lvalue DOT IDENTIFIER
+                {
+                        $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno);
+                }
         | lvalue LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET
+                {
+                        $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno);
+                }
         | call DOT IDENTIFIER
         | call LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET
         ;
@@ -245,7 +259,10 @@ funcblock:
            
 
 const:
-        INTEGER     { printf("integer: %d\n", $1); }
+        INTEGER
+                {
+                        $$ = parserUtil_newConstnumExpr($1 * 1.0);
+                }
         | REAL      { printf("real: %f\n", $1); }
         | STRING    { printf("string: %s\n", $1); }
         | NIL       { printf("nil\n"); }
