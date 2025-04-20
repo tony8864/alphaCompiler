@@ -1,7 +1,7 @@
 Quad#      opcode               arg1                 arg2                 result               LABEL 
 ---------------------------------------------------------------------------------------------------------
-0          tablecreate          _t0                                                                  
-1          tablesetelem         _t0                  x                    5                          
-2          tablesetelem         _t0                  y                    6                          
-3          assign               _t0                                       t                          
-4          assign               t                                         _t1                        
+0          add                  5                    5                    _t0                        
+1          sub                  x                    y                    _t1                        
+2          mul                  r                    r                    _t2                        
+3          div                  z                    z                    _t3                        
+4          mod                  p                    p                    _t4                        

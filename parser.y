@@ -83,11 +83,11 @@ stmt:
 
 expr:
         lvalue ASSIGN expr          { $$ = parserUtil_handleAssignExpr($1, $3, yylineno); }
-        | expr PLUS expr            { printf("expr + expr\n"); }
-        | expr MINUS expr           { printf("expr - expr\n"); }
-        | expr MULTIPLY expr        { printf("expr * expr\n"); }
-        | expr DIVIDE expr          { printf("expr / expr\n"); }
-        | expr MODULO expr          { printf("expr mod expr\n"); }
+        | expr PLUS expr            { $$ = parserUtil_handleArithmeticExpr($1, $3, add_op, yylineno); }
+        | expr MINUS expr           { $$ = parserUtil_handleArithmeticExpr($1, $3, sub_op, yylineno); }
+        | expr MULTIPLY expr        { $$ = parserUtil_handleArithmeticExpr($1, $3, mul_op, yylineno); }
+        | expr DIVIDE expr          { $$ = parserUtil_handleArithmeticExpr($1, $3, div_op, yylineno); }
+        | expr MODULO expr          { $$ = parserUtil_handleArithmeticExpr($1, $3, mod_op, yylineno); }
         | expr GREATER expr         { printf("expr > expr\n"); }
         | expr GREATER_EQUAL expr   { printf("expr >= expr\n"); }
         | expr LESS expr            { printf("expr < expr\n"); }
@@ -176,12 +176,12 @@ funcdef:        funcprefix funcargs funcbody                    { $$ = parserUti
 funcblock:      LEFT_CURLY_BRACKET stmts RIGHT_CURLY_BRACKET | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET ;
            
 const:
-        INTEGER { $$ = parserUtil_newConstnumExpr($1 * 1.0); }
-        | REAL      { printf("real: %f\n", $1); }
-        | STRING    { printf("string: %s\n", $1); }
-        | NIL       { printf("nil\n"); }
-        | TRUE      { $$ = parserUtil_newBoolExpr(1); }
-        | FALSE     { $$ = parserUtil_newBoolExpr(0); }
+        INTEGER         { $$ = parserUtil_newConstnumExpr($1 * 1.0); }
+        | REAL          { $$ = parserUtil_newConstnumExpr($1); }
+        | STRING        { printf("string: %s\n", $1); }
+        | NIL           { printf("nil\n"); }
+        | TRUE          { $$ = parserUtil_newBoolExpr(1); }
+        | FALSE         { $$ = parserUtil_newBoolExpr(0); }
         ;
 
 idlist:

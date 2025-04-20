@@ -559,6 +559,20 @@ parserUtil_handleMakeIndexedTable(Indexed* indexedList, unsigned int line) {
     return t;
 }
 
+Expr*
+parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line) {
+    icode_checkArithmetic(expr1, "expr1");
+    icode_checkArithmetic(expr2, "expr2");
+
+    Expr* e;
+
+    e = icode_newExpr(arithmexpr_e);
+    icode_setExprEntry(e, newTemp(line));
+    quad_emit(op, expr1, expr2, e, 0, line);
+
+    return e;
+}
+
 void
 parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);

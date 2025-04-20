@@ -115,4 +115,7 @@ parserUtil_handleIndexed(Indexed* indexedList, Indexed* indexed);
 Expr*
 parserUtil_handleMakeIndexedTable(Indexed* indexedList, unsigned int line);
 
+Expr*
+parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line);
+
 #endif
