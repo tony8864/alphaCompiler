@@ -28,6 +28,7 @@ typedef enum {
 
 typedef struct Expr Expr;
 typedef struct Call Call;
+typedef struct Indexed Indexed;
 
 Expr*
 icode_getLvalueExpr(SymbolTableEntry* entry);
@@ -37,6 +38,9 @@ icode_newExpr(ExprType type);
 
 Call*
 icode_newCall();
+
+Indexed*
+icode_newIndexedElem(Expr* key, Expr* value);
 
 void
 icode_setEList(Call* c, Expr* elist);
@@ -80,6 +84,9 @@ icode_setExprType(Expr* e, ExprType type);
 void
 icode_setExprNext(Expr* e, Expr* next);
 
+void
+icode_setIndexedNext(Indexed* indexed, Indexed* next);
+
 SymbolTableEntry*
 icode_getExprEntry(Expr* e);
 
@@ -91,6 +98,9 @@ icode_getExprIndex(Expr* e);
 
 Expr*
 icode_getExprNext(Expr* e);
+
+Indexed*
+icode_getIndexedNext(Indexed* indexed);
 
 char*
 icode_getStringConst(Expr* e);
@@ -106,5 +116,11 @@ icode_insertFirst(Expr* elist, Expr* e);
 
 void
 icode_checkArithmetic(Expr* e, const char* context);
+
+Expr*
+icode_getIndexedKey(Indexed* indexed);
+
+Expr*
+icode_getIndexedValue(Indexed* indexed);
 
 #endif

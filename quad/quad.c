@@ -141,6 +141,7 @@ get_expr_name(Expr* e) {
         case assignexpr_e:
         case programfunc_e:
         case boolexpr_e:
+        case newtable_e:
             return get_symtab_expr_name(e);
         case conststring_e:
             return get_constStringExpr_name(e);
@@ -168,12 +169,11 @@ get_constStringExpr_name(Expr* e) {
 
 static const char*
 get_constNumExpr_name(Expr* e) {
-    static char buf[64];
-    if (!e) return "";
+    if (!e) return strdup("");
 
-    double i = icode_getNumConst(e);
-    snprintf(buf, sizeof(buf), "%g", i);
-    return buf;
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%g", icode_getNumConst(e));
+    return strdup(buf);
 }
 
 static const char*

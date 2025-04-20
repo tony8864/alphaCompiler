@@ -21,6 +21,7 @@ extern int yylineno;
     SymbolTableEntry* symbol;
     Expr* exprVal;
     Call* callVal;
+    Indexed* indexedVal;
 }
 
 
@@ -39,8 +40,9 @@ extern int yylineno;
 %type<strVal> funcname
 %type<unsignedVal> funcbody
 %type<symbol> funcprefix funcdef
-%type<exprVal> lvalue member expr primary const elist call
+%type<exprVal> lvalue member expr primary const elist call objectdef
 %type<callVal> callsuffix normcall methodcall
+%type<indexedVal> indexedelem indexed
 
 %right ASSIGN
 %left OR
@@ -105,9 +107,9 @@ expr:
         ;
 
 primary:
-        lvalue { $$ = parserUtil_handlePrimary($1, yylineno); }
-        | call
-        | objectdef
+        lvalue          { $$ = parserUtil_handlePrimary($1, yylineno); }
+        | call          { $$ = $1; }
+        | objectdef     { }
         | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS { $$ = parserUtil_handlePrimaryFuncdef($2); }
         | const { $$ = $1; }
         ;
@@ -142,17 +144,17 @@ elist:
         ;
 
 objectdef:
-            LEFT_SQUARE_BRACKET elist RIGHT_SQUARE_BRACKET
-            | LEFT_SQUARE_BRACKET indexed RIGHT_SQUARE_BRACKET
+            LEFT_SQUARE_BRACKET elist RIGHT_SQUARE_BRACKET      { $$ = parserUtil_handleMakeElistTable($2, yylineno); }
+            | LEFT_SQUARE_BRACKET indexed RIGHT_SQUARE_BRACKET  { $$ = parserUtil_handleMakeIndexedTable($2, yylineno); }
             ;
 
 indexed:
-        indexedelem
-        | indexed COMMA indexedelem
+        indexedelem                     { $$ = $1; }
+        | indexed COMMA indexedelem     { $$ = parserUtil_handleIndexed($1, $3); }
         ;
 
 indexedelem:
-            LEFT_CURLY_BRACKET expr COLON expr RIGHT_CURLY_BRACKET
+            LEFT_CURLY_BRACKET expr COLON expr RIGHT_CURLY_BRACKET { $$ = parserUtil_newIndexed($2, $4); }
             ;
 
 block:

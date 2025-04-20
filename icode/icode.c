@@ -26,6 +26,12 @@ typedef struct Call {
     char* name;
 } Call;
 
+typedef struct Indexed {
+    Expr* key;
+    Expr* value;
+    Indexed* next;
+} Indexed;
+
 /* ------------------------------ Implementation ------------------------------ */
 Expr*
 icode_getLvalueExpr(SymbolTableEntry* entry) {
@@ -86,6 +92,24 @@ icode_newCall() {
 
     memset(c, 0, sizeof(Call));
     return c;
+}
+
+Indexed*
+icode_newIndexedElem(Expr* key, Expr* value) {
+    Indexed* indexed;
+
+    indexed = malloc(sizeof(Indexed));
+
+    if (!indexed) {
+        printf("Error creating new indexed element.\n");
+        exit(1);
+    }
+
+    indexed->key = key;
+    indexed->value = value;
+    indexed->next = NULL;
+
+    return indexed;
 }
 
 void
@@ -188,6 +212,12 @@ icode_setExprNext(Expr* e, Expr* next) {
     e->next = next;
 }
 
+void
+icode_setIndexedNext(Indexed* indexed, Indexed* next) {
+    assert(indexed);
+    indexed->next = next;
+}
+
 SymbolTableEntry*
 icode_getExprEntry(Expr* e) {
     assert(e);
@@ -210,6 +240,12 @@ Expr*
 icode_getExprNext(Expr* e) {
     assert(e);
     return e->next;
+}
+
+Indexed*
+icode_getIndexedNext(Indexed* indexed) {
+    assert(indexed);
+    return indexed->next;
 }
 
 char*
@@ -258,4 +294,16 @@ icode_checkArithmetic(Expr* e, const char* context) {
                 printf("Illegal expr used in %s\n", context);
                 exit(1);
             }
+}
+
+Expr*
+icode_getIndexedKey(Indexed* indexed) {
+    assert(indexed);
+    return indexed->key;
+}
+
+Expr*
+icode_getIndexedValue(Indexed* indexed) {
+    assert(indexed);
+    return indexed->value;
 }

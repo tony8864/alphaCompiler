@@ -507,6 +507,58 @@ parserUtil_handleDecrementLvalue(Expr* lv, unsigned int line) {
     return term;
 }
 
+Expr*
+parserUtil_handleMakeElistTable(Expr* elist, unsigned int line) {
+    Expr* t;
+
+    t = icode_newExpr(newtable_e);
+    icode_setExprEntry(t, newTemp(line));
+    quad_emit(tablecreate_op, t, NULL, NULL, 0, line);
+
+    for (int i = 0; elist; elist = icode_getExprNext(elist)) {
+        quad_emit(tablesetelem_op, t, icode_newConstNum(i++), elist, 0, line);
+    }
+
+    return t;
+}
+
+Indexed*
+parserUtil_newIndexed(Expr* key, Expr* value) {
+    return icode_newIndexedElem(key, value);
+}
+
+Indexed*
+parserUtil_handleIndexed(Indexed* indexedList, Indexed* indexed) {
+    Indexed* tmp;
+
+    tmp = indexedList;
+    while(icode_getIndexedNext(tmp)) {
+        tmp = icode_getIndexedNext(tmp);
+    }
+    icode_setIndexedNext(tmp, indexed);
+    return indexedList;
+}
+
+Expr*
+parserUtil_handleMakeIndexedTable(Indexed* indexedList, unsigned int line) {
+    Expr* t;
+    Expr* key;
+    Expr* value;
+
+    t = icode_newExpr(newtable_e);
+    icode_setExprEntry(t, newTemp(line));
+    quad_emit(tablecreate_op, t, NULL, NULL, 0, line);
+
+    while(indexedList) {
+        key = icode_getIndexedKey(indexedList);
+        value = icode_getIndexedValue(indexedList);
+        quad_emit(tablesetelem_op, t, key, value, 0, line);
+        indexedList = icode_getIndexedNext(indexedList);
+    }
+
+    return t;
+}
+
 void
 parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);

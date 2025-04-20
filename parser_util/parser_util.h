@@ -103,4 +103,16 @@ parserUtil_handleLvalueDecrement(Expr* lv, unsigned int line);
 Expr*
 parserUtil_handleDecrementLvalue(Expr* lv, unsigned int line);
 
+Expr*
+parserUtil_handleMakeElistTable(Expr* elist, unsigned int line);
+
+Indexed*
+parserUtil_newIndexed(Expr* key, Expr* value);
+
+Indexed*
+parserUtil_handleIndexed(Indexed* indexedList, Indexed* indexed);
+
+Expr*
+parserUtil_handleMakeIndexedTable(Indexed* indexedList, unsigned int line);
+
 #endif
