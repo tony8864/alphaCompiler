@@ -1,12 +1,6 @@
 Quad#      opcode               arg1                 arg2                 result               LABEL 
 ---------------------------------------------------------------------------------------------------------
-1          call                 f                                                                    
-2          getretval                                                      _t0                        
-3          call                 g                                                                    
-4          getretval                                                      _t1                        
-5          if_greater_eq        _t0                  _t1                                       8     
-6          assign               false                                     _t2                        
-7          jump                                                                                9     
-8          assign               true                                      _t2                        
-9          assign               _t2                                       b                          
-10         assign               b                                         _t3                        
+1          and                  y                    z                    _t0                        
+2          or                   x                    _t0                  _t1                        
+3          assign               _t1                                       a                          
+4          assign               a                                         _t2                        

@@ -592,6 +592,17 @@ parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
     return e;
 }
 
+Expr*
+parserUtil_handleBooleanExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line) {
+    Expr* e;
+
+    e = icode_newExpr(boolexpr_e);
+    icode_setExprEntry(e, newTemp(line));
+    quad_emit(op, expr1, expr2, e, 0, line);
+    
+    return e;
+}
+
 void
 parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);

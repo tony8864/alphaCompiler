@@ -94,8 +94,8 @@ expr:
         | expr LESS_EQUAL expr                          { $$ = parserUtil_handleRelationalExpr($1, $3, if_lesseq_op, yylineno); }
         | expr EQUAL expr                               { $$ = parserUtil_handleRelationalExpr($1, $3, if_eq_op, yylineno);}
         | expr NOT_EQUAL expr                           { $$ = parserUtil_handleRelationalExpr($1, $3, if_noteq_op, yylineno); }
-        | expr AND expr                                 { printf("expr and expr\n"); }
-        | expr OR expr                                  { printf("expr or expr\n"); }
+        | expr AND expr                                 { $$ = parserUtil_handleBooleanExpr($1, $3, and_op, yylineno); }
+        | expr OR expr                                  { $$ = parserUtil_handleBooleanExpr($1, $3, or_op, yylineno); }
         | LEFT_PARENTHESIS expr RIGHT_PARENTHESIS       { $$ = $2; }
         | MINUS expr %prec UMINUS                       { $$ = parserUtil_handleUminusExpr($2, yylineno); }
         | NOT expr                                      { $$ = parserUtil_handleNotExpr($2, yylineno); }

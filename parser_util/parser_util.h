@@ -121,4 +121,7 @@ parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
 Expr*
 parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line);
 
+Expr*
+parserUtil_handleBooleanExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line);
+
 #endif
