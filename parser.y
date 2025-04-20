@@ -95,12 +95,12 @@ expr:
         | expr AND expr             { printf("expr and expr\n"); }
         | expr OR expr              { printf("expr or expr\n"); }
         | LEFT_PARENTHESIS expr RIGHT_PARENTHESIS   { printf("(expr )\n"); }
-        | MINUS expr %prec UMINUS   { printf("minus expr\n"); }
-        | NOT expr                  { printf("not expr\n"); }
-        | PLUS_PLUS lvalue          { printf("l++lval\n"); }
-        | lvalue PLUS_PLUS          { printf("lval++\n"); }
-        | MINUS_MINUS lvalue        { printf("--lval\n"); }
-        | lvalue MINUS_MINUS        { printf("lval--\n"); }
+        | MINUS expr %prec UMINUS   { $$ = parserUtil_handleUminusExpr($2, yylineno); }
+        | NOT expr                  { $$ = parserUtil_handleNotExpr($2, yylineno); }
+        | PLUS_PLUS lvalue          { $$ = parserUtil_handleIncrementLvalue($2, yylineno); }
+        | lvalue PLUS_PLUS          { $$ = parserUtil_handleLvalueIncrement($1, yylineno); }
+        | MINUS_MINUS lvalue        { $$ = parserUtil_handleDecrementLvalue($2, yylineno); }
+        | lvalue MINUS_MINUS        { $$ = parserUtil_handleLvalueDecrement($1, yylineno); }
         | primary                   { $$ = $1; }
         ;
 
@@ -108,7 +108,7 @@ primary:
         lvalue { $$ = parserUtil_handlePrimary($1, yylineno); }
         | call
         | objectdef
-        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
+        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS { $$ = parserUtil_handlePrimaryFuncdef($2); }
         | const { $$ = $1; }
         ;
 
@@ -178,8 +178,8 @@ const:
         | REAL      { printf("real: %f\n", $1); }
         | STRING    { printf("string: %s\n", $1); }
         | NIL       { printf("nil\n"); }
-        | TRUE      { printf("true\n"); }
-        | FALSE     { printf("false\n"); }
+        | TRUE      { $$ = parserUtil_newBoolExpr(1); }
+        | FALSE     { $$ = parserUtil_newBoolExpr(0); }
         ;
 
 idlist:

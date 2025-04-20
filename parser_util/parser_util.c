@@ -290,6 +290,14 @@ parserUtil_handlePrimary(Expr* lv, unsigned int line) {
 }
 
 Expr*
+parserUtil_handlePrimaryFuncdef(SymbolTableEntry* entry) {
+    Expr* primary;
+    primary = icode_newExpr(programfunc_e);
+    icode_setExprEntry(primary, entry);
+    return primary;
+}
+
+Expr*
 parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line) {
     Expr* assignExpr;
 
@@ -306,6 +314,11 @@ parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line) {
 Expr*
 parserUtil_newConstnumExpr(double i) {
     return icode_newConstNum(i);
+}
+
+Expr*
+parserUtil_newBoolExpr(unsigned char bool) {
+    return icode_newConstBoolean(bool);
 }
 
 Call*
@@ -380,6 +393,118 @@ parserUtil_handleElist(Expr* elist, Expr* e) {
     icode_setExprNext(tmp, e);
 
     return elist;
+}
+
+Expr*
+parserUtil_handleUminusExpr(Expr* e, unsigned int line) {
+    Expr* term;
+
+    icode_checkArithmetic(e, "unary minus");
+    term = icode_newExpr(arithmexpr_e);
+    icode_setExprEntry(term, newTemp(line));
+    quad_emit(uminus_op, e, NULL, term, 0, line);
+
+    return term;
+}
+
+Expr*
+parserUtil_handleNotExpr(Expr* e, unsigned int line) {
+    Expr* term;
+
+    term = icode_newExpr(boolexpr_e);
+    icode_setExprEntry(term, newTemp(line));
+    quad_emit(not_op, e, NULL, term, 0, line);
+
+    return term;
+}
+
+Expr*
+parserUtil_handleLvalueIncrement(Expr* lv, unsigned int line) {
+
+    Expr* term;
+    Expr* val;
+
+    icode_checkArithmetic(lv, "lvalue++");
+    term = icode_newExpr(var_e);
+    icode_setExprEntry(term, newTemp(line));
+
+    if (icode_getExprType(lv) == tableitem_e) {
+        val = emit_iftableitem(lv, line);
+        quad_emit(assign_op, val, NULL, term, 0, line);
+        quad_emit(add_op, val, icode_newConstNum(1), val, 0, line);
+        quad_emit(tablesetelem_op, lv, icode_getExprIndex(lv), val, 0, line);
+    }
+    else {
+        quad_emit(assign_op, lv, NULL, term, 0, line);
+        quad_emit(add_op, lv, icode_newConstNum(1), lv, 0, line);
+    }
+
+    return term;
+}
+
+Expr*
+parserUtil_handleIncrementLvalue(Expr* lv, unsigned int line) {
+    Expr* term;
+
+    icode_checkArithmetic(lv, "++lvalue");
+
+    if (icode_getExprType(lv) == tableitem_e) {
+        term = emit_iftableitem(lv, line);
+        quad_emit(add_op, term, icode_newConstNum(1), term, 0, line);
+        quad_emit(tablesetelem_op, lv, icode_getExprIndex(lv), term, 0, line);
+    }
+    else {
+        quad_emit(add_op, lv, icode_newConstNum(1), lv, 0, line);
+        term = icode_newExpr(arithmexpr_e);
+        icode_setExprEntry(term, newTemp(line));
+        quad_emit(assign_op, lv, NULL, term, 0, line);
+    }
+
+    return term;
+}
+
+Expr*
+parserUtil_handleLvalueDecrement(Expr* lv, unsigned int line) {
+    Expr* term;
+    Expr* val;
+
+    icode_checkArithmetic(lv, "lvalue--");
+    term = icode_newExpr(var_e);
+    icode_setExprEntry(term, newTemp(line));
+
+    if (icode_getExprType(lv) == tableitem_e) {
+        val = emit_iftableitem(lv, line);
+        quad_emit(assign_op, val, NULL, term, 0, line);
+        quad_emit(sub_op, val, icode_newConstNum(1), val, 0, line);
+        quad_emit(tablesetelem_op, lv, icode_getExprIndex(lv), val, 0, line);
+    }
+    else {
+        quad_emit(assign_op, lv, NULL, term, 0, line);
+        quad_emit(sub_op, lv, icode_newConstNum(1), lv, 0, line);
+    }
+
+    return term;
+}
+
+Expr*
+parserUtil_handleDecrementLvalue(Expr* lv, unsigned int line) {
+    Expr* term;
+
+    icode_checkArithmetic(lv, "--lvalue");
+
+    if (icode_getExprType(lv) == tableitem_e) {
+        term = emit_iftableitem(lv, line);
+        quad_emit(sub_op, term, icode_newConstNum(1), term, 0, line);
+        quad_emit(tablesetelem_op, lv, icode_getExprIndex(lv), term, 0, line);
+    }
+    else {
+        quad_emit(sub_op, lv, icode_newConstNum(1), lv, 0, line);
+        term = icode_newExpr(arithmexpr_e);
+        icode_setExprEntry(term, newTemp(line));
+        quad_emit(assign_op, lv, NULL, term, 0, line);
+    }
+
+    return term;
 }
 
 void

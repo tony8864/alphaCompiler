@@ -62,6 +62,12 @@ icode_newConstString(char* s);
 Expr*
 icode_newConstNum(double i);
 
+Expr*
+icode_newConstBoolean(unsigned char bool);
+
+unsigned char
+icode_getBoolConst(Expr* e);
+
 void
 icode_setExprEntry(Expr* e, SymbolTableEntry* entry);
 
@@ -97,5 +103,8 @@ icode_reverseExprList(Expr* head);
 
 Expr*
 icode_insertFirst(Expr* elist, Expr* e);
+
+void
+icode_checkArithmetic(Expr* e, const char* context);
 
 #endif

@@ -52,6 +52,9 @@ parserUtil_handleLvalueExprTableItem(Expr* lv, Expr* e, unsigned int line);
 Expr*
 parserUtil_handlePrimary(Expr* lv, unsigned int line);
 
+Expr*
+parserUtil_handlePrimaryFuncdef(SymbolTableEntry* entry);
+
 char*
 parserUtil_generateUnnamedFunctionName();
 
@@ -60,6 +63,9 @@ parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line);
 
 Expr*
 parserUtil_newConstnumExpr(double i);
+
+Expr*
+parserUtil_newBoolExpr(unsigned char bool);
 
 Call*
 parserUtil_handleMethodCall(char* identifier, Expr* elist);
@@ -78,5 +84,23 @@ parserUtil_handleCallFuncdef(SymbolTableEntry* funcdef, Expr* elist, unsigned in
 
 Expr*
 parserUtil_handleElist(Expr* elist, Expr* e);
+
+Expr*
+parserUtil_handleUminusExpr(Expr* e, unsigned int line);
+
+Expr*
+parserUtil_handleNotExpr(Expr* e, unsigned int line);
+
+Expr*
+parserUtil_handleLvalueIncrement(Expr* lv, unsigned int line);
+
+Expr*
+parserUtil_handleIncrementLvalue(Expr* lv, unsigned int line);
+
+Expr*
+parserUtil_handleLvalueDecrement(Expr* lv, unsigned int line);
+
+Expr*
+parserUtil_handleDecrementLvalue(Expr* lv, unsigned int line);
 
 #endif

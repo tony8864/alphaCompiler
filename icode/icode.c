@@ -122,9 +122,7 @@ Expr*
 icode_getElist(Call* c) {
     assert(c);
     Expr* elist = c->elist;
-    printf("here\n");
     while(elist) {
-        printf("---------------name: %s\n", symtab_getEntryName(elist->entry));
         elist = elist->next;
     }
     return c->elist;
@@ -148,6 +146,22 @@ icode_newConstNum(double i) {
     e->constValue.num = i;
 
     return e;
+}
+
+Expr*
+icode_newConstBoolean(unsigned char bool) {
+    Expr* e;
+
+    e = icode_newExpr(constbool_e);
+    e->constValue.boolean = (bool != 0) ? 1 : 0;
+
+    return e;
+}
+
+unsigned char
+icode_getBoolConst(Expr* e) {
+    assert(e);
+    return e->constValue.boolean;
 }
 
 void
@@ -230,4 +244,18 @@ Expr*
 icode_insertFirst(Expr* elist, Expr* e) {
     e->next = elist;
     return e;
+}
+
+void
+icode_checkArithmetic(Expr* e, const char* context) {
+    if (    e->type == constbool_e      ||
+            e->type == conststring_e    ||
+            e->type == nil_e            ||
+            e->type == newtable_e       ||
+            e->type == programfunc_e    ||
+            e->type == libraryfunc_e    ||
+            e->type == boolexpr_e ) {
+                printf("Illegal expr used in %s\n", context);
+                exit(1);
+            }
 }

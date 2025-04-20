@@ -41,6 +41,12 @@ get_constStringExpr_name(Expr* e);
 static const char*
 get_constNumExpr_name(Expr* e);
 
+static const char*
+get_constBoolExpr_name(Expr* e);
+
+static void
+write_quads(FILE* out);
+
 /* ------------------------------ Implementation ------------------------------ */
 void
 quad_emit(IOPCodeType op, Expr* arg1, Expr* arg2, Expr* result, unsigned label, unsigned line) {
@@ -69,53 +75,12 @@ quad_writeQuadsToFile(char* filename) {
         exit(1);
     }
 
-    for (int i = 0; i < currQuad; i++) {
-        q = quads[i];
-
-        const char* opcode = opcode_to_string(q.op);
-        const char* arg1 = get_expr_name(q.arg1);
-        const char* arg2 = get_expr_name(q.arg2);
-        const char* result = get_expr_name(q.result);
-
-        //fprintf(file, "%-10s %-10s %-10s %-10s", opcode, result, arg1, arg2);
-
-        fprintf(file, "%s %s %s %s", opcode, result, arg1, arg2);
-
-        if (q.label != 0) {
-            fprintf(file, "%u", q.label);
-        }
-        fprintf(file, "\n");
-    }
+    write_quads(file);
+    fclose(file);
 }
 
 void quad_printQuads() {
-    printf("%-5s | %-12s | %-10s | %-10s | %-20s | %-6s | %-5s\n",
-           "ID", "OP", "ARG1", "ARG2", "RESULT", "LABEL", "LINE");
-    printf("----------------------------------------------------------------------------\n");
-
-    for (unsigned i = 0; i < currQuad; ++i) {
-        Quad q = quads[i];
-
-        const char* arg1_str = get_expr_name(q.arg1);
-        const char* arg2_str = get_expr_name(q.arg2);
-        const char* result_str = get_expr_name(q.result);
-        
-        char label_buf[8];
-
-        if (q.label != 0)
-            snprintf(label_buf, sizeof(label_buf), "%u", q.label);
-        else
-            label_buf[0] = '\0';
-
-        printf("%-5u | %-12s | %-10s | %-10s | %-20s | %-6s | %-5u\n",
-               i,
-               opcode_to_string(q.op),
-               arg1_str,
-               arg2_str,
-               result_str,
-               label_buf,
-               q.line);
-    }
+    write_quads(stdout);
 }
 
 static void
@@ -172,13 +137,17 @@ get_expr_name(Expr* e) {
     switch (icode_getExprType(e)) {
         case var_e:
         case tableitem_e:
+        case arithmexpr_e:
         case assignexpr_e:
         case programfunc_e:
+        case boolexpr_e:
             return get_symtab_expr_name(e);
         case conststring_e:
             return get_constStringExpr_name(e);
         case constnum_e:
             return get_constNumExpr_name(e);
+        case constbool_e:
+            return get_constBoolExpr_name(e);
         default:
             assert(0);
     }
@@ -205,4 +174,40 @@ get_constNumExpr_name(Expr* e) {
     double i = icode_getNumConst(e);
     snprintf(buf, sizeof(buf), "%g", i);
     return buf;
+}
+
+static const char*
+get_constBoolExpr_name(Expr* e) {
+    if (!e) return "";
+    return icode_getBoolConst(e) ? "true" : "false";
+}
+
+static void
+write_quads(FILE* out) {
+    fprintf(out, "%-10s %-20s %-20s %-20s %-20s %-6s\n",
+        "Quad#", "opcode", "arg1", "arg2", "result", "LABEL");
+    fprintf(out, "---------------------------------------------------------------------------------------------------------\n");
+
+    for (unsigned i = 0; i < currQuad; ++i) {
+        Quad q = quads[i];
+
+        const char* arg1_str = get_expr_name(q.arg1);
+        const char* arg2_str = get_expr_name(q.arg2);
+        const char* result_str = get_expr_name(q.result);
+        
+        char label_buf[8];
+
+        if (q.label != 0)
+            snprintf(label_buf, sizeof(label_buf), "%u", q.label);
+        else
+            label_buf[0] = '\0';
+
+        fprintf(out, "%-10d %-20s %-20s %-20s %-20s %-6s\n",
+                i,
+                opcode_to_string(q.op),
+                arg1_str,
+                arg2_str,
+                result_str,
+                label_buf);
+    }
 }

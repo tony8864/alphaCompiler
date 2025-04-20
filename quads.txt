@@ -1,2 +1,6 @@
-tablesetelem x t 5
-tablegetelem _t0 t 5
+Quad#      opcode               arg1                 arg2                 result               LABEL 
+---------------------------------------------------------------------------------------------------------
+0          assign               x                                         _t0                        
+1          sub                  x                    1                    x                          
+2          assign               _t0                                       a                          
+3          assign               a                                         _t1                        
