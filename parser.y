@@ -88,28 +88,28 @@ expr:
         | expr MULTIPLY expr        { $$ = parserUtil_handleArithmeticExpr($1, $3, mul_op, yylineno); }
         | expr DIVIDE expr          { $$ = parserUtil_handleArithmeticExpr($1, $3, div_op, yylineno); }
         | expr MODULO expr          { $$ = parserUtil_handleArithmeticExpr($1, $3, mod_op, yylineno); }
-        | expr GREATER expr         { printf("expr > expr\n"); }
-        | expr GREATER_EQUAL expr   { printf("expr >= expr\n"); }
-        | expr LESS expr            { printf("expr < expr\n"); }
-        | expr LESS_EQUAL expr      { printf("expr <= expr\n"); }
-        | expr EQUAL expr           { printf("expr == expr\n"); }
-        | expr NOT_EQUAL expr       { printf("expr != expr\n"); }
-        | expr AND expr             { printf("expr and expr\n"); }
-        | expr OR expr              { printf("expr or expr\n"); }
-        | LEFT_PARENTHESIS expr RIGHT_PARENTHESIS   { printf("(expr )\n"); }
-        | MINUS expr %prec UMINUS   { $$ = parserUtil_handleUminusExpr($2, yylineno); }
-        | NOT expr                  { $$ = parserUtil_handleNotExpr($2, yylineno); }
-        | PLUS_PLUS lvalue          { $$ = parserUtil_handleIncrementLvalue($2, yylineno); }
-        | lvalue PLUS_PLUS          { $$ = parserUtil_handleLvalueIncrement($1, yylineno); }
-        | MINUS_MINUS lvalue        { $$ = parserUtil_handleDecrementLvalue($2, yylineno); }
-        | lvalue MINUS_MINUS        { $$ = parserUtil_handleLvalueDecrement($1, yylineno); }
-        | primary                   { $$ = $1; }
+        | expr GREATER expr                             { $$ = parserUtil_handleRelationalExpr($1, $3, if_greater_op, yylineno); }
+        | expr GREATER_EQUAL expr                       { $$ = parserUtil_handleRelationalExpr($1, $3, if_greatereq_op, yylineno); }
+        | expr LESS expr                                { $$ = parserUtil_handleRelationalExpr($1, $3, if_less_op, yylineno); }
+        | expr LESS_EQUAL expr                          { $$ = parserUtil_handleRelationalExpr($1, $3, if_lesseq_op, yylineno); }
+        | expr EQUAL expr                               { $$ = parserUtil_handleRelationalExpr($1, $3, if_eq_op, yylineno);}
+        | expr NOT_EQUAL expr                           { $$ = parserUtil_handleRelationalExpr($1, $3, if_noteq_op, yylineno); }
+        | expr AND expr                                 { printf("expr and expr\n"); }
+        | expr OR expr                                  { printf("expr or expr\n"); }
+        | LEFT_PARENTHESIS expr RIGHT_PARENTHESIS       { $$ = $2; }
+        | MINUS expr %prec UMINUS                       { $$ = parserUtil_handleUminusExpr($2, yylineno); }
+        | NOT expr                                      { $$ = parserUtil_handleNotExpr($2, yylineno); }
+        | PLUS_PLUS lvalue                              { $$ = parserUtil_handleIncrementLvalue($2, yylineno); }
+        | lvalue PLUS_PLUS                              { $$ = parserUtil_handleLvalueIncrement($1, yylineno); }
+        | MINUS_MINUS lvalue                            { $$ = parserUtil_handleDecrementLvalue($2, yylineno); }
+        | lvalue MINUS_MINUS                            { $$ = parserUtil_handleLvalueDecrement($1, yylineno); }
+        | primary                                       { $$ = $1; }
         ;
 
 primary:
         lvalue          { $$ = parserUtil_handlePrimary($1, yylineno); }
         | call          { $$ = $1; }
-        | objectdef     { }
+        | objectdef     { $$ = $1; }
         | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS { $$ = parserUtil_handlePrimaryFuncdef($2); }
         | const { $$ = $1; }
         ;
@@ -122,8 +122,8 @@ lvalue:
         ;
 
 member:
-        lvalue DOT IDENTIFIER { $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno); }
-        | lvalue LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET { $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno); }
+        lvalue DOT IDENTIFIER                                   { $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno); }
+        | lvalue LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET  { $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno); }
         | call DOT IDENTIFIER
         | call LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET
         ;
@@ -135,8 +135,8 @@ call:
         ;
 
 callsuffix:      normcall { $$ = $1; } | methodcall { $$ = $1; };
-normcall:        LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall($2); };
-methodcall:      DOT_DOT IDENTIFIER LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleMethodCall($2, $4); };
+normcall:        LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall($2); } | LEFT_PARENTHESIS RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall(NULL); };
+methodcall:      DOT_DOT IDENTIFIER LEFT_PARENTHESIS elist RIGHT_PARENTHESIS    { $$ = parserUtil_handleMethodCall($2, $4); };
 
 elist:
         expr                    { $$ = $1; }

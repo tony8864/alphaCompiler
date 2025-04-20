@@ -83,6 +83,12 @@ void quad_printQuads() {
     write_quads(stdout);
 }
 
+unsigned int
+quad_nextQuadLabel() {
+    return currQuad;
+}
+
+/* ------------------------------ Static Declarations ------------------------------ */
 static void
 expand() {
     assert(total == currQuad);
@@ -95,7 +101,6 @@ expand() {
     total += EXPAND_SIZE;
 }
 
-/* ------------------------------ Static Declarations ------------------------------ */
 static const char*
 opcode_to_string(IOPCodeType op) {
     switch (op) {
@@ -124,6 +129,7 @@ opcode_to_string(IOPCodeType op) {
         case tablecreate_op:    return "tablecreate";
         case tablegetelem_op:   return "tablegetelem";
         case tablesetelem_op:   return "tablesetelem";
+        case jump_op:           return "jump";
         default:                return "unknown";
     }
 }
@@ -203,7 +209,7 @@ write_quads(FILE* out) {
             label_buf[0] = '\0';
 
         fprintf(out, "%-10d %-20s %-20s %-20s %-20s %-6s\n",
-                i,
+                i+1,
                 opcode_to_string(q.op),
                 arg1_str,
                 arg2_str,

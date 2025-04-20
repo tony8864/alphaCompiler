@@ -573,6 +573,25 @@ parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
     return e;
 }
 
+Expr*
+parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line) {
+
+    icode_checkArithmetic(expr1, "expr1");
+    icode_checkArithmetic(expr2, "expr2");
+
+    Expr* e;
+
+    e = icode_newExpr(boolexpr_e);
+    icode_setExprEntry(e, newTemp(line));
+
+    quad_emit(op, expr1, expr2, NULL, quad_nextQuadLabel()+4, line);
+    quad_emit(assign_op, icode_newConstBoolean(0), NULL, e, 0, line);
+    quad_emit(jump_op, NULL, NULL, NULL, quad_nextQuadLabel()+3, line);
+    quad_emit(assign_op, icode_newConstBoolean(1), NULL, e, 0, line);
+
+    return e;
+}
+
 void
 parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);

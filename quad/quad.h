@@ -15,6 +15,9 @@ quad_emitIfTableItem(Expr* e);
 void
 quad_writeQuadsToFile(char* filename);
 
+unsigned int
+quad_nextQuadLabel();
+
 void
 quad_printQuads();
 
