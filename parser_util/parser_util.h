@@ -62,7 +62,13 @@ Expr*
 parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line);
 
 Expr*
+parserUtil_newConstString(char* str);
+
+Expr*
 parserUtil_newConstnumExpr(double i);
+
+Expr*
+parserUtil_newConstNil();
 
 Expr*
 parserUtil_newBoolExpr(unsigned char bool);
@@ -135,5 +141,14 @@ parserUtil_handleIfPrefixStatement(unsigned int ifprefix);
 
 void
 parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, unsigned int elsePrefix);
+
+unsigned int
+parserUtil_handleWhileStart();
+
+unsigned int
+parserUtil_handleWhileCond(Expr* expr, unsigned int line);
+
+void
+parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond, unsigned int line);
 
 #endif

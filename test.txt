@@ -1,4 +1,5 @@
-if (a or b) 
-    x = y;
-else
-    y = x;
+while (x > y)
+    if (b)
+        x = 1;
+    else
+        x = 2;

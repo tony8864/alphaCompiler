@@ -317,6 +317,16 @@ parserUtil_newConstnumExpr(double i) {
 }
 
 Expr*
+parserUtil_newConstString(char* str) {
+    return icode_newConstString(str);
+}
+
+Expr*
+parserUtil_newConstNil() {
+    return icode_newExpr(nil_e);
+}
+
+Expr*
 parserUtil_newBoolExpr(unsigned char bool) {
     return icode_newConstBoolean(bool);
 }
@@ -629,6 +639,28 @@ parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, unsigned int elseP
 void
 parserUtil_handleIfPrefixStatement(unsigned int ifprefix) {
     quad_patchLabel(ifprefix, quad_nextQuadLabel()+1);
+}
+
+unsigned int
+parserUtil_handleWhileStart() {
+    return quad_nextQuadLabel() + 1;
+}
+
+unsigned int
+parserUtil_handleWhileCond(Expr* expr, unsigned int line) {
+    unsigned int whileCond;
+
+    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel()+3, line);
+    whileCond = quad_nextQuadLabel();
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
+
+    return whileCond;
+}
+
+void
+parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond, unsigned int line) {
+    quad_emit(jump_op, NULL, NULL, NULL, whileStart, line);
+    quad_patchLabel(whileCond, quad_nextQuadLabel() + 1);
 }
 
 void

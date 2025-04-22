@@ -1,10 +1,16 @@
 Quad#      opcode               arg1                 arg2                 result               LABEL 
 ---------------------------------------------------------------------------------------------------------
-1          or                   a                    b                    _t0                        
-2          if_eq                _t0                  true                                      4     
-3          jump                                                                                7     
-4          assign               y                                         x                          
-5          assign               x                                         _t1                        
-6          jump                                                                                9     
-7          assign               x                                         y                          
-8          assign               y                                         _t2                        
+1          if_greater           x                    y                                         4     
+2          assign               false                                     _t0                        
+3          jump                                                                                5     
+4          assign               true                                      _t0                        
+5          if_eq                _t0                  true                                      7     
+6          jump                                                                                15    
+7          if_eq                b                    true                                      9     
+8          jump                                                                                12    
+9          assign               1                                         x                          
+10         assign               x                                         _t1                        
+11         jump                                                                                14    
+12         assign               2                                         x                          
+13         assign               x                                         _t2                        
+14         jump                                                                                1     

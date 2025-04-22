@@ -161,6 +161,8 @@ get_expr_name(Expr* e) {
             return get_constNumExpr_name(e);
         case constbool_e:
             return get_constBoolExpr_name(e);
+        case nil_e:
+            return "nil";
         default:
             assert(0);
     }

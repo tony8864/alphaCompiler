@@ -38,7 +38,7 @@ extern int yylineno;
 %token<strVal>  IDENTIFIER
 
 %type<strVal> funcname
-%type<unsignedVal> funcbody ifprefix elseprefix
+%type<unsignedVal> funcbody ifprefix elseprefix whilestart whilecond
 %type<symbol> funcprefix funcdef
 %type<exprVal> lvalue member expr primary const elist call objectdef
 %type<callVal> callsuffix normcall methodcall
@@ -148,14 +148,8 @@ objectdef:
             | LEFT_SQUARE_BRACKET indexed RIGHT_SQUARE_BRACKET  { $$ = parserUtil_handleMakeIndexedTable($2, yylineno); }
             ;
 
-indexed:
-        indexedelem                     { $$ = $1; }
-        | indexed COMMA indexedelem     { $$ = parserUtil_handleIndexed($1, $3); }
-        ;
-
-indexedelem:
-            LEFT_CURLY_BRACKET expr COLON expr RIGHT_CURLY_BRACKET { $$ = parserUtil_newIndexed($2, $4); }
-            ;
+indexed:        indexedelem                                             { $$ = $1; } | indexed COMMA indexedelem { $$ = parserUtil_handleIndexed($1, $3); };
+indexedelem:    LEFT_CURLY_BRACKET expr COLON expr RIGHT_CURLY_BRACKET  { $$ = parserUtil_newIndexed($2, $4); };
 
 block:
         LEFT_CURLY_BRACKET      { parserUtil_handleBlockEntrance(); } 
@@ -165,10 +159,7 @@ block:
         RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); }
         ;
 
-funcname: IDENTIFIER    { $$ = $1; }
-        | /* empty */   { $$ = parserUtil_generateUnnamedFunctionName(); }
-        ;
-
+funcname:       IDENTIFIER                                      { $$ = $1; } | /* empty */   { $$ = parserUtil_generateUnnamedFunctionName(); } ;
 funcprefix:     FUNCTION funcname                               { $$ = parserUtil_handleFuncPrefix($2, yylineno); };
 funcargs:       LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS       { parserUtil_handleFuncArgs(); };
 funcbody:       funcblock                                       { $$ = parserUtil_handleFuncbody(); };
@@ -176,31 +167,32 @@ funcdef:        funcprefix funcargs funcbody                    { $$ = parserUti
 funcblock:      LEFT_CURLY_BRACKET stmts RIGHT_CURLY_BRACKET | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET ;
            
 const:
-        INTEGER         { $$ = parserUtil_newConstnumExpr($1 * 1.0); }
-        | REAL          { $$ = parserUtil_newConstnumExpr($1); }
-        | STRING        { printf("string: %s\n", $1); }
-        | NIL           { printf("nil\n"); }
-        | TRUE          { $$ = parserUtil_newBoolExpr(1); }
-        | FALSE         { $$ = parserUtil_newBoolExpr(0); }
+          INTEGER         { $$ = parserUtil_newConstnumExpr($1 * 1.0); }
+        | REAL            { $$ = parserUtil_newConstnumExpr($1); }
+        | STRING          { $$ = parserUtil_newConstString($1); }
+        | NIL             { $$ = parserUtil_newConstNil(); }
+        | TRUE            { $$ = parserUtil_newBoolExpr(1); }
+        | FALSE           { $$ = parserUtil_newBoolExpr(0); }
         ;
 
 idlist:
-        IDENTIFIER                      { parserUtil_handleFormalArgument(yylval.strVal, yylineno); }
-        | idlist COMMA IDENTIFIER       { parserUtil_handleFormalArgument(yylval.strVal, yylineno); }
+          IDENTIFIER                      { parserUtil_handleFormalArgument(yylval.strVal, yylineno); }
+        | idlist COMMA IDENTIFIER         { parserUtil_handleFormalArgument(yylval.strVal, yylineno); }
         | /* empty */
         ;
 
 ifstmt:
-        ifprefix stmt                           { parserUtil_handleIfPrefixStatement($1); }
-        | ifprefix stmt elseprefix stmt         { parserUtil_handleIfElsePrefixStatement($1, $3); }
+          ifprefix stmt                           { parserUtil_handleIfPrefixStatement($1); }
+        | ifprefix stmt elseprefix stmt           { parserUtil_handleIfElsePrefixStatement($1, $3); }
         ;
 
-ifprefix: IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS    { $$ = parserUtil_handleIfPrefix($3, yylineno);};
-elseprefix: ELSE                                        { $$ = parserUtil_handleElse(yylineno); }
+ifprefix:       IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS      { $$ = parserUtil_handleIfPrefix($3, yylineno);};
+elseprefix:     ELSE                                            { $$ = parserUtil_handleElse(yylineno); }
 
-whilestmt:
-            WHILE LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt
-            ;
+whilestmt:      whilestart whilecond stmt               { parserUtil_handleWhileStatement($1, $2, yylineno);};
+whilestart:     WHILE                                   { $$ = parserUtil_handleWhileStart();};
+whilecond:      LEFT_PARENTHESIS expr RIGHT_PARENTHESIS { $$ = parserUtil_handleWhileCond($2, yylineno);};
+
 
 forstmt:
         FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARENTHESIS stmt
