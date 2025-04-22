@@ -38,7 +38,7 @@ extern int yylineno;
 %token<strVal>  IDENTIFIER
 
 %type<strVal> funcname
-%type<unsignedVal> funcbody
+%type<unsignedVal> funcbody ifprefix elseprefix
 %type<symbol> funcprefix funcdef
 %type<exprVal> lvalue member expr primary const elist call objectdef
 %type<callVal> callsuffix normcall methodcall
@@ -82,12 +82,12 @@ stmt:
         ;
 
 expr:
-        lvalue ASSIGN expr          { $$ = parserUtil_handleAssignExpr($1, $3, yylineno); }
-        | expr PLUS expr            { $$ = parserUtil_handleArithmeticExpr($1, $3, add_op, yylineno); }
-        | expr MINUS expr           { $$ = parserUtil_handleArithmeticExpr($1, $3, sub_op, yylineno); }
-        | expr MULTIPLY expr        { $$ = parserUtil_handleArithmeticExpr($1, $3, mul_op, yylineno); }
-        | expr DIVIDE expr          { $$ = parserUtil_handleArithmeticExpr($1, $3, div_op, yylineno); }
-        | expr MODULO expr          { $$ = parserUtil_handleArithmeticExpr($1, $3, mod_op, yylineno); }
+        lvalue ASSIGN expr                              { $$ = parserUtil_handleAssignExpr($1, $3, yylineno); }
+        | expr PLUS expr                                { $$ = parserUtil_handleArithmeticExpr($1, $3, add_op, yylineno); }
+        | expr MINUS expr                               { $$ = parserUtil_handleArithmeticExpr($1, $3, sub_op, yylineno); }
+        | expr MULTIPLY expr                            { $$ = parserUtil_handleArithmeticExpr($1, $3, mul_op, yylineno); }
+        | expr DIVIDE expr                              { $$ = parserUtil_handleArithmeticExpr($1, $3, div_op, yylineno); }
+        | expr MODULO expr                              { $$ = parserUtil_handleArithmeticExpr($1, $3, mod_op, yylineno); }
         | expr GREATER expr                             { $$ = parserUtil_handleRelationalExpr($1, $3, if_greater_op, yylineno); }
         | expr GREATER_EQUAL expr                       { $$ = parserUtil_handleRelationalExpr($1, $3, if_greatereq_op, yylineno); }
         | expr LESS expr                                { $$ = parserUtil_handleRelationalExpr($1, $3, if_less_op, yylineno); }
@@ -107,11 +107,11 @@ expr:
         ;
 
 primary:
-        lvalue          { $$ = parserUtil_handlePrimary($1, yylineno); }
-        | call          { $$ = $1; }
-        | objectdef     { $$ = $1; }
-        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS { $$ = parserUtil_handlePrimaryFuncdef($2); }
-        | const { $$ = $1; }
+        lvalue                                          { $$ = parserUtil_handlePrimary($1, yylineno); }
+        | call                                          { $$ = $1; }
+        | objectdef                                     { $$ = $1; }
+        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS    { $$ = parserUtil_handlePrimaryFuncdef($2); }
+        | const                                         { $$ = $1; }
         ;
 
 lvalue:
@@ -124,8 +124,8 @@ lvalue:
 member:
         lvalue DOT IDENTIFIER                                   { $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno); }
         | lvalue LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET  { $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno); }
-        | call DOT IDENTIFIER
-        | call LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET
+        | call DOT IDENTIFIER                                   { $$ = parserUtil_handleLvalueIdentifierTableItem($1, $3, yylineno); }
+        | call LEFT_SQUARE_BRACKET expr RIGHT_SQUARE_BRACKET    { $$ = parserUtil_handleLvalueExprTableItem($1, $3, yylineno); }
         ;
 
 call:
@@ -135,8 +135,8 @@ call:
         ;
 
 callsuffix:      normcall { $$ = $1; } | methodcall { $$ = $1; };
-normcall:        LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall($2); } | LEFT_PARENTHESIS RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall(NULL); };
-methodcall:      DOT_DOT IDENTIFIER LEFT_PARENTHESIS elist RIGHT_PARENTHESIS    { $$ = parserUtil_handleMethodCall($2, $4); };
+normcall:        LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { $$ = parserUtil_handleNormCall($2); } | LEFT_PARENTHESIS RIGHT_PARENTHESIS  { $$ = parserUtil_handleNormCall(NULL); };
+methodcall:      DOT_DOT IDENTIFIER LEFT_PARENTHESIS elist RIGHT_PARENTHESIS                                                            { $$ = parserUtil_handleMethodCall($2, $4); };
 
 elist:
         expr                    { $$ = $1; }
@@ -191,9 +191,12 @@ idlist:
         ;
 
 ifstmt:
-        IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt
-        | IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt ELSE stmt
+        ifprefix stmt                           { parserUtil_handleIfPrefixStatement($1); }
+        | ifprefix stmt elseprefix stmt         { parserUtil_handleIfElsePrefixStatement($1, $3); }
         ;
+
+ifprefix: IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS    { $$ = parserUtil_handleIfPrefix($3, yylineno);};
+elseprefix: ELSE                                        { $$ = parserUtil_handleElse(yylineno); }
 
 whilestmt:
             WHILE LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt

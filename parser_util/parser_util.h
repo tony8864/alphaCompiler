@@ -124,4 +124,16 @@ parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
 Expr*
 parserUtil_handleBooleanExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line);
 
+unsigned int
+parserUtil_handleIfPrefix(Expr* expr, unsigned int line);
+
+unsigned int
+parserUtil_handleElse(unsigned int line);
+
+void
+parserUtil_handleIfPrefixStatement(unsigned int ifprefix);
+
+void
+parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, unsigned int elsePrefix);
+
 #endif

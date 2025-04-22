@@ -19,6 +19,9 @@ unsigned int
 quad_nextQuadLabel();
 
 void
+quad_patchLabel(unsigned quadNo, unsigned label);
+
+void
 quad_printQuads();
 
 #endif

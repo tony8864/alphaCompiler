@@ -88,6 +88,12 @@ quad_nextQuadLabel() {
     return currQuad;
 }
 
+void
+quad_patchLabel(unsigned quadNo, unsigned label) {
+    assert(quadNo < currQuad);
+    quads[quadNo].label = label;
+}
+
 /* ------------------------------ Static Declarations ------------------------------ */
 static void
 expand() {

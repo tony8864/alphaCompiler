@@ -1,6 +1,10 @@
 Quad#      opcode               arg1                 arg2                 result               LABEL 
 ---------------------------------------------------------------------------------------------------------
-1          and                  y                    z                    _t0                        
-2          or                   x                    _t0                  _t1                        
-3          assign               _t1                                       a                          
-4          assign               a                                         _t2                        
+1          or                   a                    b                    _t0                        
+2          if_eq                _t0                  true                                      4     
+3          jump                                                                                7     
+4          assign               y                                         x                          
+5          assign               x                                         _t1                        
+6          jump                                                                                9     
+7          assign               x                                         y                          
+8          assign               y                                         _t2                        

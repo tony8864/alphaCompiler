@@ -603,6 +603,34 @@ parserUtil_handleBooleanExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned 
     return e;
 }
 
+unsigned int
+parserUtil_handleIfPrefix(Expr* expr, unsigned int line) {
+    unsigned int ifPrefix;
+    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel() + 3, line);
+    ifPrefix = quad_nextQuadLabel();
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
+    return ifPrefix;
+}
+
+unsigned int
+parserUtil_handleElse(unsigned int line) {
+    unsigned int elsePrefix;
+    elsePrefix = quad_nextQuadLabel();
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
+    return elsePrefix;
+}
+
+void
+parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, unsigned int elsePrefix) {
+    quad_patchLabel(ifPrefix, elsePrefix+2);
+    quad_patchLabel(elsePrefix, quad_nextQuadLabel()+1);
+}
+
+void
+parserUtil_handleIfPrefixStatement(unsigned int ifprefix) {
+    quad_patchLabel(ifprefix, quad_nextQuadLabel()+1);
+}
+
 void
 parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);
