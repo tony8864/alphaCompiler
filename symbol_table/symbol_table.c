@@ -13,6 +13,7 @@ typedef struct Function {
     const char* name;
     unsigned int line;
     unsigned int scope;
+    unsigned int iaddress;
     unsigned totalLocals;
 } Function;
 
@@ -52,7 +53,7 @@ Variable*
 initializeVariable(const char* name, unsigned int line, unsigned int scope);
 
 Function*
-initializeFunction(const char* name, unsigned int line, unsigned int scope);
+initializeFunction(const char* name, unsigned int line, unsigned int scope, unsigned int iaddress);
 
 SymbolTableEntry*
 initializeVariableEntry(Variable* variable, SymbolType type);
@@ -111,11 +112,11 @@ symtab_insertVariable(SymbolTable* table, const char* name, unsigned int line, u
 }
 
 SymbolTableEntry*
-symtab_insertFunction(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, SymbolType type) {
+symtab_insertFunction(SymbolTable* table, const char* name, unsigned int line, unsigned int scope, unsigned int iaddress, SymbolType type) {
     Function* function;
     SymbolTableEntry* entry;
 
-    function = initializeFunction(name, line, scope);
+    function = initializeFunction(name, line, scope, iaddress);
     entry = initializeFunctionEntry(function, type);
 
     insertEntryInCollisionTable(table, entry, hash(name));
@@ -248,14 +249,16 @@ symtab_printScopeTable(SymbolTable* table) {
                     char scopeStr[12];
                     char funcType[12];
                     char totalLocalStr[20];
+                    char iaddressStr[12];
                     
                     snprintf(nameStr, sizeof(nameStr), "\"%s\"", symbol->name);
                     snprintf(lineStr, sizeof(lineStr), "(line %d)", symbol->line);
                     snprintf(scopeStr, sizeof(scopeStr), "(scope %d)", symbol->scope);
                     snprintf(funcType, sizeof(funcType), "[%s]", getStringFunctionType(entry->type));
+                    snprintf(iaddressStr, sizeof(iaddressStr), "[iaddr %u]", symbol->iaddress);
                     snprintf(totalLocalStr, sizeof(totalLocalStr), "(total locals %d)", symbol->totalLocals);
 
-                    printf("%-20s %-10s %-10s %-10s %-10s\n", nameStr, funcType, lineStr, scopeStr, totalLocalStr);
+                    printf("%-20s %-10s %-10s %-10s %-10s %-10s\n", nameStr, funcType, lineStr, scopeStr, totalLocalStr, iaddressStr);
                 }
                 else {
                     Variable* symbol = entry->value.varValue;
@@ -336,7 +339,7 @@ initializeVariable(const char* name, unsigned int line, unsigned int scope) {
 }
 
 Function*
-initializeFunction(const char* name, unsigned int line, unsigned int scope) {
+initializeFunction(const char* name, unsigned int line, unsigned int scope, unsigned int iaddress) {
     Function* function;
 
     function = malloc(sizeof(Function));
@@ -349,6 +352,7 @@ initializeFunction(const char* name, unsigned int line, unsigned int scope) {
     function->name = name;
     function->line = line;
     function->scope = scope;
+    function->iaddress = iaddress;
     function->totalLocals = 0;
 
     return function;

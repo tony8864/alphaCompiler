@@ -2,6 +2,7 @@
     "files.associations": {
         "symbol_table.h": "c",
         "type_traits": "c",
-        "icode.h": "c"
+        "icode.h": "c",
+        "compare": "c"
     }
 }

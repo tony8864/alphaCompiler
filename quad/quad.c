@@ -47,6 +47,9 @@ get_constBoolExpr_name(Expr* e);
 static void
 write_quads(FILE* out);
 
+static void
+printList(int head);
+
 /* ------------------------------ Implementation ------------------------------ */
 void
 quad_emit(IOPCodeType op, Expr* arg1, Expr* arg2, Expr* result, unsigned label, unsigned line) {
@@ -94,6 +97,64 @@ quad_patchLabel(unsigned quadNo, unsigned label) {
     quads[quadNo].label = label;
 }
 
+int
+quad_newList(int i) {
+    quads[i].label = 0;
+    return i;
+}
+
+int
+quad_mergeList(int l1, int l2) {
+    if (!l1) {
+        return l2;
+    }
+    else if (!l2) {
+        return l1;
+    }
+    else {
+        int i = l1;
+        
+        while (quads[i].label) {
+            i = quads[i].label;
+        }
+        quads[i].label = l2;
+        return l1;
+    }
+}
+
+void
+quad_patchList(int list, int label) {
+    while (list) {
+        int next = quads[list].label;
+        quads[list].label = label;
+        list = next;
+    }
+}
+
+void
+quad_printList(int head) {
+    if (!head) {
+        printf("List is empty.\n");
+        return;
+    }
+
+    int i = head;
+    printf("List: ");
+    
+    // Optional: track visited nodes to avoid infinite loops
+    int count = 0;
+    while (i && count < 1000) {
+        printf("%d ", i);
+        i = quads[i].label;
+        count++;
+    }
+
+    if (count >= 1000) {
+        printf("(Possible cycle detected!)");
+    }
+
+    printf("\n");
+}
 /* ------------------------------ Static Declarations ------------------------------ */
 static void
 expand() {
@@ -152,6 +213,7 @@ get_expr_name(Expr* e) {
         case arithmexpr_e:
         case assignexpr_e:
         case programfunc_e:
+        case libraryfunc_e:
         case boolexpr_e:
         case newtable_e:
             return get_symtab_expr_name(e);
@@ -198,8 +260,8 @@ get_constBoolExpr_name(Expr* e) {
 
 static void
 write_quads(FILE* out) {
-    fprintf(out, "%-10s %-20s %-20s %-20s %-20s %-6s\n",
-        "Quad#", "opcode", "arg1", "arg2", "result", "LABEL");
+    fprintf(out, "%-10s %-20s %-20s %-20s %-20s %-6s %-6s\n",
+        "Quad#", "opcode", "result", "arg1", "arg2", "LABEL", "LINE");
     fprintf(out, "---------------------------------------------------------------------------------------------------------\n");
 
     for (unsigned i = 0; i < currQuad; ++i) {
@@ -210,18 +272,23 @@ write_quads(FILE* out) {
         const char* result_str = get_expr_name(q.result);
         
         char label_buf[8];
+        char line_buf[20];
 
         if (q.label != 0)
             snprintf(label_buf, sizeof(label_buf), "%u", q.label);
         else
             label_buf[0] = '\0';
 
-        fprintf(out, "%-10d %-20s %-20s %-20s %-20s %-6s\n",
+        snprintf(line_buf, sizeof(line_buf), "[line %u]", q.line);
+
+        fprintf(out, "%-10d %-20s %-20s %-20s %-20s %-6s %-6s\n",
                 i+1,
                 opcode_to_string(q.op),
+                result_str,
                 arg1_str,
                 arg2_str,
-                result_str,
-                label_buf);
+                label_buf,
+                line_buf
+            );
     }
 }

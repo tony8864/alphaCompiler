@@ -139,8 +139,8 @@ parserUtil_handleElse(unsigned int line);
 void
 parserUtil_handleIfPrefixStatement(unsigned int ifprefix);
 
-void
-parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, unsigned int elsePrefix);
+Statement*
+parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, Statement* stmt1, unsigned int elsePrefix, Statement* stmt2);
 
 unsigned int
 parserUtil_handleWhileStart();
@@ -149,6 +149,48 @@ unsigned int
 parserUtil_handleWhileCond(Expr* expr, unsigned int line);
 
 void
-parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond, unsigned int line);
+parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond, Statement* stmt, unsigned int line);
+
+void
+parserUtil_handleForStatement(ForPrefix* forprefix, unsigned int N1, unsigned int N2, Statement* stmt, unsigned int N3);
+
+ForPrefix*
+parserUtil_handleForPrefix(unsigned int M, Expr* expr, unsigned int line);
+
+unsigned int
+parserUtil_handleNrule(unsigned int line);
+
+unsigned int
+parserUtil_handleMrule(unsigned int line);
+
+Statement*
+parserUtil_handleStatement(Statement* stmts, Statement* stmt);
+
+Statement*
+parserUtil_handleContinue(unsigned int line);
+
+Statement*
+parserUtil_handleBreak(unsigned int line);
+
+Statement*
+parserUtil_newStatement();
+
+void
+parserUtil_handleReturn(Expr* e, unsigned int line);
+
+void*
+parserUtil_handleGeneralStatement();
+
+void
+parserUtil_handleLoopStart();
+
+void
+parserUtil_handleLoopEnd();
+
+void
+parserUtil_handleFuncBlockStart();
+
+void
+parserUtil_handleFuncBlockEnd();
 
 #endif

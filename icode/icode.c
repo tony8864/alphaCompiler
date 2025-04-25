@@ -1,4 +1,3 @@
-#include "../symbol_table/symbol_table.h"
 #include "icode.h"
 
 #include <stdio.h>
@@ -31,6 +30,16 @@ typedef struct Indexed {
     Expr* value;
     Indexed* next;
 } Indexed;
+
+typedef struct ForPrefix {
+    unsigned int test;
+    unsigned int enter;
+} ForPrefix;
+
+typedef struct Statement {
+    int breakList;
+    int contList;
+} Statement;
 
 /* ------------------------------ Implementation ------------------------------ */
 Expr*
@@ -110,6 +119,47 @@ icode_newIndexedElem(Expr* key, Expr* value) {
     indexed->next = NULL;
 
     return indexed;
+}
+
+Statement*
+icode_newStatement() {
+    Statement* stmt;
+
+    stmt = malloc(sizeof(Statement));
+
+    if (!stmt) {
+        printf("Error allocating memory for statement.\n");
+        exit(1);
+    }
+
+    stmt->breakList = 0;
+    stmt->contList = 0;
+
+    return stmt;
+}
+
+void
+icode_setContList(Statement* stmt, int i) {
+    assert(stmt);
+    stmt->contList = i;
+}
+
+void
+icode_setBreakList(Statement* stmt, int i) {
+    assert(stmt);
+    stmt->breakList = i;
+}
+
+int
+icode_getBreakList(Statement* stmt) {
+    assert(stmt);
+    return stmt->breakList;
+}
+
+int
+icode_getContList(Statement* stmt) {
+    assert(stmt);
+    return stmt->contList;
 }
 
 void
@@ -283,7 +333,7 @@ icode_insertFirst(Expr* elist, Expr* e) {
 }
 
 void
-icode_checkArithmetic(Expr* e, const char* context) {
+icode_checkArithmetic(Expr* e, const char* context, unsigned int line) {
     if (    e->type == constbool_e      ||
             e->type == conststring_e    ||
             e->type == nil_e            ||
@@ -291,7 +341,7 @@ icode_checkArithmetic(Expr* e, const char* context) {
             e->type == programfunc_e    ||
             e->type == libraryfunc_e    ||
             e->type == boolexpr_e ) {
-                printf("Illegal expr used in %s\n", context);
+                printf("Illegal expr at line [%u] used in %s\n", line, context);
                 exit(1);
             }
 }
@@ -306,4 +356,33 @@ Expr*
 icode_getIndexedValue(Indexed* indexed) {
     assert(indexed);
     return indexed->value;
+}
+
+ForPrefix*
+icode_newForPrefix(unsigned int test, unsigned int enter) {
+    ForPrefix* forPrefix;
+
+    forPrefix = malloc(sizeof(ForPrefix));
+    
+    if (!forPrefix) {
+        printf("Error allocating memory for forprefix.\n");
+        exit(1);
+    }
+
+    forPrefix->test = test;
+    forPrefix->enter = enter;
+
+    return forPrefix;
+}
+
+unsigned int
+icode_getForPrefixTest(ForPrefix* f) {
+    assert(f);
+    return f->test;
+}
+
+unsigned int
+icode_getForPrefixEnter(ForPrefix* f) {
+    assert(f);
+    return f->enter;
 }

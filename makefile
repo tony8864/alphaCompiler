@@ -1,8 +1,21 @@
+OBJ_DIR = obj
 
-OBJECTS = 	scanner.o scanner_util.o string_reader.o comment_reader.o \
-			parser.o parser_util.o symbol_table.o scope_stack.o  \
-			scope_space.o quad.o icode.o
+OBJECTS = \
+	$(OBJ_DIR)/scanner.o \
+	$(OBJ_DIR)/scanner_util.o \
+	$(OBJ_DIR)/string_reader.o \
+	$(OBJ_DIR)/comment_reader.o \
+	$(OBJ_DIR)/parser.o \
+	$(OBJ_DIR)/parser_util.o \
+	$(OBJ_DIR)/symbol_table.o \
+	$(OBJ_DIR)/scope_stack.o \
+	$(OBJ_DIR)/scope_space.o \
+	$(OBJ_DIR)/quad.o \
+	$(OBJ_DIR)/icode.o \
+	$(OBJ_DIR)/lc_stack.o
 
+# Original .c file paths
+LC_STACK_C = lc_stack/lc_stack.c
 QUAD_C = quad/quad.c
 ICODE_C = icode/icode.c
 PARSER_C_H = parser.tab.c parser.tab.h
@@ -17,44 +30,52 @@ COMMENT_READER_C = comment_reader/comment_reader.c
 exe: ${OBJECTS}
 	gcc -o exe ${OBJECTS}
 
-scanner.o: scanner.c
+# Ensure object directory exists
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+
+$(OBJ_DIR)/scanner.o: scanner.c | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 scanner.c: scanner.l parser.tab.h
 	flex --outfile=scanner.c $<
 
-parser.o: parser.tab.c
+$(OBJ_DIR)/parser.o: parser.tab.c | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 ${PARSER_C_H}: parser.y
 	bison -d $<
 
-scanner_util.o:	${SCANNER_UTIL_C}
+$(OBJ_DIR)/scanner_util.o: ${SCANNER_UTIL_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-string_reader.o: ${STRING_READER_C}
+$(OBJ_DIR)/string_reader.o: ${STRING_READER_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-comment_reader.o: ${COMMENT_READER_C}
-	gcc -c $< -o $@
-	
-parser_util.o: ${PARSER_UTIL_C}
+$(OBJ_DIR)/comment_reader.o: ${COMMENT_READER_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-symbol_table.o: ${SYMBOL_TABLE_C}
+$(OBJ_DIR)/parser_util.o: ${PARSER_UTIL_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-scope_stack.o: ${SCOPE_STACK_C}
+$(OBJ_DIR)/symbol_table.o: ${SYMBOL_TABLE_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-scope_space.o: ${SCOPE_SPACE_C}
+$(OBJ_DIR)/scope_stack.o: ${SCOPE_STACK_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-icode.o: ${ICODE_C}
+$(OBJ_DIR)/scope_space.o: ${SCOPE_SPACE_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
-quad.o: ${QUAD_C}
+$(OBJ_DIR)/icode.o: ${ICODE_C} | $(OBJ_DIR)
+	gcc -c $< -o $@
+
+$(OBJ_DIR)/quad.o: ${QUAD_C} | $(OBJ_DIR)
+	gcc -c $< -o $@
+
+$(OBJ_DIR)/lc_stack.o: ${LC_STACK_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 clean:
-	rm -f exe scanner.c ${OBJECTS} ${PARSER_C_H}
+	rm -f exe scanner.c ${PARSER_C_H}
+	rm -rf $(OBJ_DIR)

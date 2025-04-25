@@ -21,7 +21,19 @@ quad_nextQuadLabel();
 void
 quad_patchLabel(unsigned quadNo, unsigned label);
 
+int
+quad_newList(int i);
+
+int
+quad_mergeList(int l1, int l2);
+
+void
+quad_patchList(int list, int label);
+
 void
 quad_printQuads();
+
+void
+quad_printList(int head);
 
 #endif

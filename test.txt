@@ -1,5 +1,22 @@
-while (x > y)
-    if (b)
-        x = 1;
-    else
-        x = 2;
+while ( x < 5) {
+    x = x + 1;
+    continue;
+
+    function f() {
+        y = 1;
+        continue;
+
+        while (true) {
+            continue;
+
+            function g() {
+                break;
+
+                while (true) {
+                    break;
+                }
+            }
+        }
+    }
+    continue;
+}

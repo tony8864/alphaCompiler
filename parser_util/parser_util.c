@@ -1,6 +1,6 @@
 #include "../scope_space/scope_space.h"
 #include "../scope_stack/scope_stack.h"
-#include "../icode/icode.h"
+#include "../lc_stack/lc_stack.h"
 #include "../quad/quad.h"
 #include "parser_util.h"
 
@@ -46,6 +46,9 @@ handleFunctionDefinition(const char* name, unsigned int line);
 void
 reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name);
 
+void
+reportLvalueFunction(Expr* lv, unsigned int line);
+
 char*
 newTempName();
 
@@ -78,6 +81,9 @@ parserUtil_initialize() {
     insertLibraryFunctions();
     scopeStack_initialize();
     scopeSpace_initialize();
+
+    lcStack_initialize();
+    lcStack_pushLoopCounter();
 }
 
 void
@@ -91,6 +97,8 @@ parserUtil_cleanup() {
 
     scopeStack_cleanup();
     scopeSpace_cleanup();
+
+    lcStack_cleanup();
 }
 
 void
@@ -104,6 +112,7 @@ parserUtil_handleBlockExit() {
     symtab_hide(table, scope);
     SCOPE_EXIT();
     scopeStack_pop();
+    resetTemp();
 }
 
 Expr*
@@ -193,12 +202,12 @@ parserUtil_handleFormalArgument(const char* name, unsigned int line) {
 SymbolTableEntry*
 parserUtil_handleFuncPrefix(char* name, unsigned int line) {
     SymbolTableEntry* entry;
-    Expr* result;
+    Expr* arg;
 
     entry = handleFunctionDefinition(name, line);
-    result = icode_getLvalueExpr(entry);
+    arg = icode_getLvalueExpr(entry);
 
-    quad_emit(funcstart_op, NULL, NULL, result, 0, line);
+    quad_emit(funcstart_op, arg, NULL, NULL, 0, line);
 
     SCOPE_ENTER();
     scopeStack_push(SCOPE_FUNCTION);
@@ -218,26 +227,23 @@ parserUtil_handleFuncArgs() {
 unsigned
 parserUtil_handleFuncbody() {
     unsigned totalLocals;
-
     totalLocals = scopeSpace_currentScopeOffset();
-    
     scopeSpace_exitScopeSpace();
-
     return totalLocals;
 }
 
 SymbolTableEntry*
 parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, unsigned int line) {
-    Expr* result;
+    Expr* arg;
 
     symtab_setFunctionLocal(funcPrefix, totalLocals);
 
     scopeSpace_exitScopeSpace();
     scopeSpace_restoreLocalOffset();
 
-    result = icode_getLvalueExpr(funcPrefix);
+    arg = icode_getLvalueExpr(funcPrefix);
 
-    quad_emit(funcend_op, NULL, NULL, result, 0, line);
+    quad_emit(funcend_op, arg, NULL, NULL, 0, line);
 
     symtab_hide(table, scope);
     SCOPE_EXIT();
@@ -251,7 +257,7 @@ parserUtil_generateUnnamedFunctionName() {
     static unsigned int counter = 0;
     char buffer[32];
 
-    snprintf(buffer, sizeof(buffer), "anon_func_%u", counter++);
+    snprintf(buffer, sizeof(buffer), "_$func_%u", counter++);
 
     char* name = malloc(strlen(buffer) + 1);
     if (!name) {
@@ -300,6 +306,8 @@ parserUtil_handlePrimaryFuncdef(SymbolTableEntry* entry) {
 Expr*
 parserUtil_handleAssignExpr(Expr* lv, Expr* e, unsigned int line) {
     Expr* assignExpr;
+    
+    reportLvalueFunction(lv, line);
 
     if (icode_getExprType(lv) == tableitem_e) {
         assignExpr = assignToTableItem(lv, e, line);
@@ -372,6 +380,7 @@ parserUtil_handleCallSuffix(Expr* lv, Call* callsuffix, unsigned int line) {
 
 Call*
 parserUtil_handleNormCall(Expr* elist) {
+
     Call* call;
 
     call = icode_newCall();
@@ -409,7 +418,7 @@ Expr*
 parserUtil_handleUminusExpr(Expr* e, unsigned int line) {
     Expr* term;
 
-    icode_checkArithmetic(e, "unary minus");
+    icode_checkArithmetic(e, "unary minus", line);
     term = icode_newExpr(arithmexpr_e);
     icode_setExprEntry(term, newTemp(line));
     quad_emit(uminus_op, e, NULL, term, 0, line);
@@ -434,7 +443,7 @@ parserUtil_handleLvalueIncrement(Expr* lv, unsigned int line) {
     Expr* term;
     Expr* val;
 
-    icode_checkArithmetic(lv, "lvalue++");
+    icode_checkArithmetic(lv, "lvalue++", line);
     term = icode_newExpr(var_e);
     icode_setExprEntry(term, newTemp(line));
 
@@ -456,7 +465,7 @@ Expr*
 parserUtil_handleIncrementLvalue(Expr* lv, unsigned int line) {
     Expr* term;
 
-    icode_checkArithmetic(lv, "++lvalue");
+    icode_checkArithmetic(lv, "++lvalue", line);
 
     if (icode_getExprType(lv) == tableitem_e) {
         term = emit_iftableitem(lv, line);
@@ -478,7 +487,7 @@ parserUtil_handleLvalueDecrement(Expr* lv, unsigned int line) {
     Expr* term;
     Expr* val;
 
-    icode_checkArithmetic(lv, "lvalue--");
+    icode_checkArithmetic(lv, "lvalue--", line);
     term = icode_newExpr(var_e);
     icode_setExprEntry(term, newTemp(line));
 
@@ -500,7 +509,7 @@ Expr*
 parserUtil_handleDecrementLvalue(Expr* lv, unsigned int line) {
     Expr* term;
 
-    icode_checkArithmetic(lv, "--lvalue");
+    icode_checkArithmetic(lv, "--lvalue", line);
 
     if (icode_getExprType(lv) == tableitem_e) {
         term = emit_iftableitem(lv, line);
@@ -571,8 +580,8 @@ parserUtil_handleMakeIndexedTable(Indexed* indexedList, unsigned int line) {
 
 Expr*
 parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line) {
-    icode_checkArithmetic(expr1, "expr1");
-    icode_checkArithmetic(expr2, "expr2");
+    icode_checkArithmetic(expr1, "expr1", line);
+    icode_checkArithmetic(expr2, "expr2", line);
 
     Expr* e;
 
@@ -586,8 +595,8 @@ parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
 Expr*
 parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned int line) {
 
-    icode_checkArithmetic(expr1, "expr1");
-    icode_checkArithmetic(expr2, "expr2");
+    icode_checkArithmetic(expr1, "expr1", line);
+    icode_checkArithmetic(expr2, "expr2", line);
 
     Expr* e;
 
@@ -630,10 +639,40 @@ parserUtil_handleElse(unsigned int line) {
     return elsePrefix;
 }
 
-void
-parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, unsigned int elsePrefix) {
+Statement*
+parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, Statement* stmt1, unsigned int elsePrefix, Statement* stmt2) {
+    Statement* stmt;
+
+    int newBreakList;
+    int newContList;
+
+    int breakList1 = 0, breakList2 = 0;
+    int contList1 = 0, contList2 = 0;
+
     quad_patchLabel(ifPrefix, elsePrefix+2);
     quad_patchLabel(elsePrefix, quad_nextQuadLabel()+1);
+
+    stmt = icode_newStatement();
+
+    if (stmt1 != NULL) {
+        contList1 = icode_getContList(stmt1);
+        breakList1 = icode_getBreakList(stmt1);
+    }
+
+    if (stmt2 != NULL) {
+        contList2 = icode_getContList(stmt2);
+        breakList2 = icode_getBreakList(stmt2);
+    }
+
+    newContList = quad_mergeList(contList1, contList2);
+    newBreakList = quad_mergeList(breakList1, breakList2);
+
+    quad_printList(newBreakList);
+
+    icode_setContList(stmt, newContList);
+    icode_setBreakList(stmt, newBreakList);
+
+    return stmt;
 }
 
 void
@@ -649,18 +688,174 @@ parserUtil_handleWhileStart() {
 unsigned int
 parserUtil_handleWhileCond(Expr* expr, unsigned int line) {
     unsigned int whileCond;
-
     quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel()+3, line);
     whileCond = quad_nextQuadLabel();
     quad_emit(jump_op, NULL, NULL, NULL, 0, line);
-
     return whileCond;
 }
 
 void
-parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond, unsigned int line) {
+parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond, Statement* stmt, unsigned int line) {
+    int contList = 0;
+    int breakList = 0;
+
     quad_emit(jump_op, NULL, NULL, NULL, whileStart, line);
     quad_patchLabel(whileCond, quad_nextQuadLabel() + 1);
+
+    if (stmt != NULL) {
+        contList = icode_getContList(stmt);
+        breakList = icode_getBreakList(stmt);
+    }
+
+    quad_patchList(contList, whileStart);
+    quad_patchList(breakList, quad_nextQuadLabel() + 1);
+}
+
+void
+parserUtil_handleForStatement(ForPrefix* forPrefix, unsigned int N1, unsigned int N2, Statement* stmt, unsigned int N3) {
+    int contList = 0;
+    int breakList = 0;
+
+    quad_patchLabel(icode_getForPrefixEnter(forPrefix), N2 + 2);
+    quad_patchLabel(N1, quad_nextQuadLabel() + 1);
+    quad_patchLabel(N2, icode_getForPrefixTest(forPrefix) + 1);
+    quad_patchLabel(N3, N1 + 2);
+
+    if (stmt != NULL) {
+        contList = icode_getContList(stmt);
+        breakList = icode_getBreakList(stmt);
+    }
+
+    quad_patchList(contList, N1 + 2);
+    quad_patchList(breakList, quad_nextQuadLabel() + 1);
+}
+
+ForPrefix*
+parserUtil_handleForPrefix(unsigned int M, Expr* expr, unsigned int line) {
+    ForPrefix* forPrefix;
+    forPrefix = icode_newForPrefix(M, quad_nextQuadLabel());
+    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, 0, line);
+    return forPrefix;
+}
+
+unsigned int
+parserUtil_handleNrule(unsigned int line) {
+    unsigned int N;
+    N = quad_nextQuadLabel();
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
+    return N;
+}
+
+unsigned int
+parserUtil_handleMrule(unsigned int line) {
+    return quad_nextQuadLabel();
+}
+
+Statement*
+parserUtil_handleStatement(Statement* stmts, Statement* stmt) {
+    Statement* newStmt;
+
+    int newBreakList;
+    int newContList;
+
+    int breakList1 = 0, breakList2 = 0;
+    int contList1 = 0, contList2 = 0;
+
+    newStmt = icode_newStatement();
+
+    if (stmts != NULL) {
+        contList1 = icode_getContList(stmts);
+        breakList1 = icode_getBreakList(stmts);
+    }
+
+    if (stmt != NULL) {
+        contList2 = icode_getContList(stmt);
+        breakList2 = icode_getBreakList(stmt);
+    }
+
+    newContList = quad_mergeList(contList1, contList2);
+    newBreakList = quad_mergeList(breakList1, breakList2);
+    
+    icode_setContList(newStmt, newContList);
+    icode_setBreakList(newStmt, newBreakList);
+    
+    return newStmt;
+}
+
+Statement*
+parserUtil_handleContinue(unsigned int line) {
+
+    if (!lcStack_isInsideLoop()) {
+        printf("Error at line %d: Continue is not inside loop.\n", line);
+        exit(1);
+    }
+
+    Statement* stmt;
+    unsigned int nextQuad;
+
+    stmt = icode_newStatement();
+    nextQuad = quad_nextQuadLabel();
+
+    icode_setContList(stmt, quad_newList(nextQuad));
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
+
+    return stmt;
+}
+
+Statement*
+parserUtil_handleBreak(unsigned int line) {
+
+    if (!lcStack_isInsideLoop()) {
+        printf("Error at line %d: Break is not inside loop.\n", line);
+        exit(1);
+    }
+
+    Statement* stmt;
+    unsigned int nextQuad;
+
+    stmt = icode_newStatement();
+    nextQuad = quad_nextQuadLabel();
+
+    icode_setBreakList(stmt, quad_newList(nextQuad));
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
+
+    return stmt;
+}
+
+Statement*
+parserUtil_newStatement() {
+    return icode_newStatement();
+}
+
+void
+parserUtil_handleReturn(Expr* e, unsigned int line) {
+    quad_emit(ret_op, NULL, NULL, e, 0, line);
+}
+
+void*
+parserUtil_handleGeneralStatement() {
+    resetTemp();
+    return NULL;
+}
+
+void
+parserUtil_handleLoopStart() {
+    lcStack_incrementLoopCounter();
+}
+
+void
+parserUtil_handleLoopEnd() {
+    lcStack_decrementLoopCounter();
+}
+
+void
+parserUtil_handleFuncBlockStart() {
+    lcStack_pushLoopCounter();
+}
+
+void
+parserUtil_handleFuncBlockEnd() {
+    lcStack_popLoopCouter();
 }
 
 void
@@ -682,7 +877,7 @@ isSymbolLibraryFunction(const char* name) {
 static void
 insertLibraryFunctions() {
     for (int i = 0; i < NUM_LIBRARY_FUNCTIONS; i++) {
-        symtab_insertFunction(table, libraryFunctions[i], 0, 0, LIBFUNC);
+        symtab_insertFunction(table, libraryFunctions[i], 0, 0, 0, LIBFUNC);
     }
 }
 
@@ -702,7 +897,7 @@ handleFunctionDefinition(const char* name, unsigned int line) {
         exit(1);
     }
 
-    entry = symtab_insertFunction(table, name, line, scope, USERFUNC);
+    entry = symtab_insertFunction(table, name, line, scope, quad_nextQuadLabel() + 1, USERFUNC);
 
     return entry;
 }
@@ -711,6 +906,20 @@ void
 reportInaccessibleVariable(unsigned int line1, unsigned int line2, const char* name) {
     fprintf(stderr, "Error at line %u: Variable \"%s\" at line %d is inaccessible.\n", line1, name, line2);
     exit(1);
+}
+
+void
+reportLvalueFunction(Expr* lv, unsigned int line) {
+    SymbolTableEntry* entry;
+    SymbolType type;
+
+    entry = icode_getExprEntry(lv);
+    type = symtab_getEntryType(entry);
+
+    if (type == LIBFUNC || type == USERFUNC) {
+        printf("Error at line %u: Function is used as an l-value.\n", line);
+        exit(1);
+    }
 }
 
 char*

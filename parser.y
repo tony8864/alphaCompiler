@@ -3,6 +3,7 @@
 #include "parser_util/parser_util.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 int yyerror(char* errorMessage);
 int yylex(void);
@@ -22,6 +23,8 @@ extern int yylineno;
     Expr* exprVal;
     Call* callVal;
     Indexed* indexedVal;
+    ForPrefix* forPrefixVal;
+    Statement* statementVal;
 }
 
 
@@ -38,11 +41,13 @@ extern int yylineno;
 %token<strVal>  IDENTIFIER
 
 %type<strVal> funcname
-%type<unsignedVal> funcbody ifprefix elseprefix whilestart whilecond
+%type<unsignedVal> funcbody ifprefix elseprefix whilestart whilecond N M
 %type<symbol> funcprefix funcdef
 %type<exprVal> lvalue member expr primary const elist call objectdef
 %type<callVal> callsuffix normcall methodcall
 %type<indexedVal> indexedelem indexed
+%type<forPrefixVal> forprefix
+%type<statementVal> stmts stmt block ifstmt loopstmt
 
 %right ASSIGN
 %left OR
@@ -64,21 +69,21 @@ program:
 
 
 stmts: 
-        stmt                { printf("stmt\n"); }
-        | stmts stmt        { printf("stmts stmt\n"); }
+        stmt                { $$ = $1; }
+        | stmts stmt        { $$ = parserUtil_handleStatement($1, $2); }
         ;
 
 stmt:
-        expr SEMICOLON              { printf("expr semicolon\n"); }
-        | ifstmt                    { printf("if stmt\n"); }
-        | whilestmt                 { printf("while stmt\n"); }
-        | forstmt                   { printf("for stmt\n"); }
-        | returnstmt                { printf("return stmt\n"); }
-        | BREAK SEMICOLON           { printf("break semicolon\n"); }
-        | CONTINUE SEMICOLON        { printf("continue semicolon\n"); }
-        | block                     { printf("block\n"); }
-        | funcdef                   { printf("func def\n"); }
-        | SEMICOLON
+        expr SEMICOLON              { $$ = parserUtil_handleGeneralStatement(); }
+        | ifstmt                    { $$ = $1; }
+        | whilestmt                 { $$ = parserUtil_handleGeneralStatement(); }
+        | forstmt                   { $$ = parserUtil_handleGeneralStatement(); }
+        | returnstmt                { $$ = parserUtil_handleGeneralStatement(); }
+        | BREAK SEMICOLON           { $$ = parserUtil_handleBreak(yylineno); }
+        | CONTINUE SEMICOLON        { $$ = parserUtil_handleContinue(yylineno);}
+        | block                     { $$ = $1; }
+        | funcdef                   { $$ = parserUtil_handleGeneralStatement(); }
+        | SEMICOLON                 { $$ = parserUtil_handleGeneralStatement(); }
         ;
 
 expr:
@@ -118,7 +123,7 @@ lvalue:
         IDENTIFIER                      { $$ = parserUtil_handleIdentifier($1, yylineno); }
         | LOCAL IDENTIFIER              { $$ = parserUtil_handleLocalIdentifier($2, yylineno); }
         | DOUBLE_COLON IDENTIFIER       { $$ = parserUtil_habdleGlobalLookup($2, yylineno); }
-        | member
+        | member                        { $$ = $1; }
         ;
 
 member:
@@ -130,6 +135,7 @@ member:
 
 call:
         call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS                                           { $$ = parserUtil_handleCall($1, $3, yylineno); }
+        | call LEFT_PARENTHESIS RIGHT_PARENTHESIS                                               { $$ = parserUtil_handleCall($1, NULL, yylineno); }
         | lvalue callsuffix                                                                     { $$ = parserUtil_handleCallSuffix($1, $2, yylineno); }
         | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS LEFT_PARENTHESIS elist RIGHT_PARENTHESIS   { $$ = parserUtil_handleCallFuncdef($2, $5, yylineno); }
         ;
@@ -146,6 +152,7 @@ elist:
 objectdef:
             LEFT_SQUARE_BRACKET elist RIGHT_SQUARE_BRACKET      { $$ = parserUtil_handleMakeElistTable($2, yylineno); }
             | LEFT_SQUARE_BRACKET indexed RIGHT_SQUARE_BRACKET  { $$ = parserUtil_handleMakeIndexedTable($2, yylineno); }
+            | LEFT_SQUARE_BRACKET RIGHT_SQUARE_BRACKET          { $$ = parserUtil_handleMakeIndexedTable(NULL, yylineno); }
             ;
 
 indexed:        indexedelem                                             { $$ = $1; } | indexed COMMA indexedelem { $$ = parserUtil_handleIndexed($1, $3); };
@@ -154,15 +161,18 @@ indexedelem:    LEFT_CURLY_BRACKET expr COLON expr RIGHT_CURLY_BRACKET  { $$ = p
 block:
         LEFT_CURLY_BRACKET      { parserUtil_handleBlockEntrance(); } 
         stmts 
-        RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); }
+        RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); $$ = $3; }
         | LEFT_CURLY_BRACKET    { parserUtil_handleBlockEntrance(); }
-        RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); }
+        RIGHT_CURLY_BRACKET     { parserUtil_handleBlockExit(); $$ = parserUtil_newStatement(); }
         ;
+
+funcblockstart: { parserUtil_handleFuncBlockStart(); };
+funcblockend:   { parserUtil_handleFuncBlockEnd(); };
 
 funcname:       IDENTIFIER                                      { $$ = $1; } | /* empty */   { $$ = parserUtil_generateUnnamedFunctionName(); } ;
 funcprefix:     FUNCTION funcname                               { $$ = parserUtil_handleFuncPrefix($2, yylineno); };
 funcargs:       LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS       { parserUtil_handleFuncArgs(); };
-funcbody:       funcblock                                       { $$ = parserUtil_handleFuncbody(); };
+funcbody:       funcblockstart funcblock funcblockend           { $$ = parserUtil_handleFuncbody(); };
 funcdef:        funcprefix funcargs funcbody                    { $$ = parserUtil_handleFuncdef($1, $3, yylineno); };
 funcblock:      LEFT_CURLY_BRACKET stmts RIGHT_CURLY_BRACKET | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET ;
            
@@ -182,24 +192,29 @@ idlist:
         ;
 
 ifstmt:
-          ifprefix stmt                           { parserUtil_handleIfPrefixStatement($1); }
-        | ifprefix stmt elseprefix stmt           { parserUtil_handleIfElsePrefixStatement($1, $3); }
+          ifprefix stmt                           { parserUtil_handleIfPrefixStatement($1); $$ = $2; }
+        | ifprefix stmt elseprefix stmt           { $$ = parserUtil_handleIfElsePrefixStatement($1, $2, $3, $4); }
         ;
 
 ifprefix:       IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS      { $$ = parserUtil_handleIfPrefix($3, yylineno);};
 elseprefix:     ELSE                                            { $$ = parserUtil_handleElse(yylineno); }
 
-whilestmt:      whilestart whilecond stmt               { parserUtil_handleWhileStatement($1, $2, yylineno);};
+loopstart:                              { parserUtil_handleLoopStart(); };
+loopend:                                { parserUtil_handleLoopEnd(); };
+loopstmt:       loopstart stmt loopend  {  $$ = $2; }
+
+whilestmt:      whilestart whilecond loopstmt           { parserUtil_handleWhileStatement($1, $2, $3, yylineno);};
 whilestart:     WHILE                                   { $$ = parserUtil_handleWhileStart();};
 whilecond:      LEFT_PARENTHESIS expr RIGHT_PARENTHESIS { $$ = parserUtil_handleWhileCond($2, yylineno);};
 
 
-forstmt:
-        FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARENTHESIS stmt
-        ;
+forstmt: forprefix N elist RIGHT_PARENTHESIS N stmt N                   { parserUtil_handleForStatement($1, $2, $5, $6, $7); }
+forprefix: FOR LEFT_PARENTHESIS elist SEMICOLON M expr SEMICOLON        { $$ = parserUtil_handleForPrefix($5, $6, yylineno);}
+N: { $$ = parserUtil_handleNrule(yylineno); }
+M: { $$ = parserUtil_handleMrule(yylineno); }
 
-returnstmt:
-            RETURN expr SEMICOLON
+returnstmt: RETURN expr SEMICOLON { parserUtil_handleReturn($2, yylineno); }
+            | RETURN SEMICOLON { parserUtil_handleReturn(NULL, yylineno); }
             ;
 
 
