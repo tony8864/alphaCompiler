@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 static const char* libraryFunctions[] = {
     "print",
@@ -27,9 +28,13 @@ static const int NUM_LIBRARY_FUNCTIONS = sizeof(libraryFunctions) / sizeof(libra
 
 static unsigned int scope = 0;
 static unsigned int tempCounter = 0;
+static unsigned int funcCounter = 0;
 
 #define SCOPE_ENTER()   (scope++)
 #define SCOPE_EXIT()    (scope--)
+
+#define FUNC_ENTER()    (funcCounter++)
+#define FUNC_EXIT()     (funcCounter--)
 
 SymbolTable* table = NULL;
 
@@ -73,6 +78,15 @@ assignToTableItem(Expr* lv, Expr* e, unsigned int line);
 Expr*
 assignToLvalue(Expr* lv, Expr* e, unsigned int line);
 
+unsigned
+isInsideFunction();
+
+Expr*
+handleConstnumExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line);
+
+Expr*
+handleArithmeticExpression(Expr* e1, Expr* e2, IOPCodeType type, unsigned int line);
+
 /* ======================================== IMPLEMENTATION ======================================== */
 void
 parserUtil_initialize() {
@@ -84,6 +98,8 @@ parserUtil_initialize() {
 
     lcStack_initialize();
     lcStack_pushLoopCounter();
+
+    quad_emit(jump_op, NULL, NULL, NULL, 1, 0);
 }
 
 void
@@ -141,7 +157,7 @@ parserUtil_handleIdentifier(const char* name, unsigned int line) {
         return icode_getLvalueExpr(entry);
     }
 
-    ScopeType type = (scope == 0) ? GLOBAL : LOCAL_T;
+    SymbolType type = (scope == 0) ? GLOBAL : LOCAL_T;
     return icode_getLvalueExpr(symtab_insertVariable(table, name, line, scope, type));
 }
 
@@ -210,6 +226,7 @@ parserUtil_handleFuncPrefix(char* name, unsigned int line) {
     quad_emit(funcstart_op, arg, NULL, NULL, 0, line);
 
     SCOPE_ENTER();
+    FUNC_ENTER();
     scopeStack_push(SCOPE_FUNCTION);
     scopeSpace_pushCurrentOffset();
     scopeSpace_enterScopeSpace();
@@ -247,6 +264,7 @@ parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, uns
 
     symtab_hide(table, scope);
     SCOPE_EXIT();
+    FUNC_EXIT();
     scopeStack_pop();
 
     return funcPrefix;
@@ -585,9 +603,12 @@ parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
 
     Expr* e;
 
-    e = icode_newExpr(arithmexpr_e);
-    icode_setExprEntry(e, newTemp(line));
-    quad_emit(op, expr1, expr2, e, 0, line);
+    if (icode_getExprType(expr1) == constnum_e && icode_getExprType(expr2)) {
+        e = handleConstnumExpression(expr1, expr2, op, line);
+    }
+    else {
+        e = handleArithmeticExpression(expr1, expr2, op, line);
+    }
 
     return e;
 }
@@ -603,9 +624,9 @@ parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
     e = icode_newExpr(boolexpr_e);
     icode_setExprEntry(e, newTemp(line));
 
-    quad_emit(op, expr1, expr2, NULL, quad_nextQuadLabel()+4, line);
+    quad_emit(op, expr1, expr2, NULL, quad_nextQuadLabel()+3, line);
     quad_emit(assign_op, icode_newConstBoolean(0), NULL, e, 0, line);
-    quad_emit(jump_op, NULL, NULL, NULL, quad_nextQuadLabel()+3, line);
+    quad_emit(jump_op, NULL, NULL, NULL, quad_nextQuadLabel()+2, line);
     quad_emit(assign_op, icode_newConstBoolean(1), NULL, e, 0, line);
 
     return e;
@@ -625,7 +646,7 @@ parserUtil_handleBooleanExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsigned 
 unsigned int
 parserUtil_handleIfPrefix(Expr* expr, unsigned int line) {
     unsigned int ifPrefix;
-    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel() + 3, line);
+    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel() + 2, line);
     ifPrefix = quad_nextQuadLabel();
     quad_emit(jump_op, NULL, NULL, NULL, 0, line);
     return ifPrefix;
@@ -649,8 +670,8 @@ parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, Statement* stmt1, 
     int breakList1 = 0, breakList2 = 0;
     int contList1 = 0, contList2 = 0;
 
-    quad_patchLabel(ifPrefix, elsePrefix+2);
-    quad_patchLabel(elsePrefix, quad_nextQuadLabel()+1);
+    quad_patchLabel(ifPrefix, elsePrefix+1);
+    quad_patchLabel(elsePrefix, quad_nextQuadLabel());
 
     stmt = icode_newStatement();
 
@@ -677,18 +698,18 @@ parserUtil_handleIfElsePrefixStatement(unsigned int ifPrefix, Statement* stmt1, 
 
 void
 parserUtil_handleIfPrefixStatement(unsigned int ifprefix) {
-    quad_patchLabel(ifprefix, quad_nextQuadLabel()+1);
+    quad_patchLabel(ifprefix, quad_nextQuadLabel());
 }
 
 unsigned int
 parserUtil_handleWhileStart() {
-    return quad_nextQuadLabel() + 1;
+    return quad_nextQuadLabel();
 }
 
 unsigned int
 parserUtil_handleWhileCond(Expr* expr, unsigned int line) {
     unsigned int whileCond;
-    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel()+3, line);
+    quad_emit(if_eq_op, expr, icode_newConstBoolean(1), NULL, quad_nextQuadLabel()+2, line);
     whileCond = quad_nextQuadLabel();
     quad_emit(jump_op, NULL, NULL, NULL, 0, line);
     return whileCond;
@@ -700,7 +721,7 @@ parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond,
     int breakList = 0;
 
     quad_emit(jump_op, NULL, NULL, NULL, whileStart, line);
-    quad_patchLabel(whileCond, quad_nextQuadLabel() + 1);
+    quad_patchLabel(whileCond, quad_nextQuadLabel());
 
     if (stmt != NULL) {
         contList = icode_getContList(stmt);
@@ -716,10 +737,10 @@ parserUtil_handleForStatement(ForPrefix* forPrefix, unsigned int N1, unsigned in
     int contList = 0;
     int breakList = 0;
 
-    quad_patchLabel(icode_getForPrefixEnter(forPrefix), N2 + 2);
-    quad_patchLabel(N1, quad_nextQuadLabel() + 1);
-    quad_patchLabel(N2, icode_getForPrefixTest(forPrefix) + 1);
-    quad_patchLabel(N3, N1 + 2);
+    quad_patchLabel(icode_getForPrefixEnter(forPrefix), N2 + 1);
+    quad_patchLabel(N1, quad_nextQuadLabel());
+    quad_patchLabel(N2, icode_getForPrefixTest(forPrefix));
+    quad_patchLabel(N3, N1 + 1);
 
     if (stmt != NULL) {
         contList = icode_getContList(stmt);
@@ -829,12 +850,18 @@ parserUtil_newStatement() {
 
 void
 parserUtil_handleReturn(Expr* e, unsigned int line) {
+    
+    if (!isInsideFunction()) {
+        printf("Error at line %u: Return is not inside a function.\n", line);
+        exit(1);
+    }
+
     quad_emit(ret_op, NULL, NULL, e, 0, line);
 }
 
 void*
 parserUtil_handleGeneralStatement() {
-    resetTemp();
+    //resetTemp();
     return NULL;
 }
 
@@ -1035,4 +1062,52 @@ assignToLvalue(Expr* lv, Expr* e, unsigned int line) {
     quad_emit(assign_op, lv, NULL, assignExpr, 0, line);
 
     return assignExpr;
+}
+
+unsigned
+isInsideFunction() {
+    assert(funcCounter >= 0);
+    return funcCounter > 0;
+}
+
+Expr*
+handleConstnumExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) {
+    Expr* e;
+    double num1, num2;
+    
+    num1 = icode_getNumConst(e1);
+    num2 = icode_getNumConst(e2);
+
+    switch (op) {
+        case add_op: e = icode_newConstNum(num1 + num2); break;
+        case sub_op: e = icode_newConstNum(num1 - num2); break;
+        case mul_op: e = icode_newConstNum(num1 * num2); break;
+        case mod_op: e = icode_newConstNum((int)num1 % (int)num2); break;
+        case div_op:
+            if (num2 == 0) {
+                printf("Error at line %u: Cannot divide by 0.\n", line);
+                exit(1);
+            }
+            e = icode_newConstNum(num1 / num2);
+            break;
+        default: 
+            printf("Error at line %u: opcode not supported for const num expression.\n", line);
+            exit(1);
+    }
+
+    icode_setExprEntry(e, newTemp(line));
+    quad_emit(op, e1, e2, e, 0, line);
+
+    return e;
+}
+
+Expr*
+handleArithmeticExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) {
+    Expr* e;
+
+    e = icode_newExpr(arithmexpr_e);
+    icode_setExprEntry(e, newTemp(line));
+    quad_emit(op, e1, e2, e, 0, line);
+
+    return e;
 }

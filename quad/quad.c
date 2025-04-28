@@ -264,7 +264,7 @@ write_quads(FILE* out) {
         "Quad#", "opcode", "result", "arg1", "arg2", "LABEL", "LINE");
     fprintf(out, "---------------------------------------------------------------------------------------------------------\n");
 
-    for (unsigned i = 0; i < currQuad; ++i) {
+    for (unsigned i = 1; i < currQuad; ++i) {
         Quad q = quads[i];
 
         const char* arg1_str = get_expr_name(q.arg1);
@@ -282,7 +282,7 @@ write_quads(FILE* out) {
         snprintf(line_buf, sizeof(line_buf), "[line %u]", q.line);
 
         fprintf(out, "%-10d %-20s %-20s %-20s %-20s %-6s %-6s\n",
-                i+1,
+                i,
                 opcode_to_string(q.op),
                 result_str,
                 arg1_str,
