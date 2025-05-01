@@ -12,9 +12,11 @@ OBJECTS = \
 	$(OBJ_DIR)/scope_space.o \
 	$(OBJ_DIR)/quad.o \
 	$(OBJ_DIR)/icode.o \
-	$(OBJ_DIR)/lc_stack.o
+	$(OBJ_DIR)/lc_stack.o \
+	${OBJ_DIR}/tcode.o
 
 # Original .c file paths
+TCODE_C = tcode/tcode.c
 LC_STACK_C = lc_stack/lc_stack.c
 QUAD_C = quad/quad.c
 ICODE_C = icode/icode.c
@@ -74,6 +76,9 @@ $(OBJ_DIR)/quad.o: ${QUAD_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 $(OBJ_DIR)/lc_stack.o: ${LC_STACK_C} | $(OBJ_DIR)
+	gcc -c $< -o $@
+
+$(OBJ_DIR)/tcode.o: ${TCODE_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 clean:

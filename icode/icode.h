@@ -4,8 +4,8 @@
 #include "../symbol_table/symbol_table.h"
 
 typedef enum {
-    assign_op, add_op, sub_op, mul_op, div_op, mod_op,
-    uminus_op, and_op, or_op, not_op, if_eq_op, if_noteq_op,
+    add_op, sub_op, mul_op, div_op, mod_op, uminus_op,
+    assign_op, and_op, or_op, not_op, if_eq_op, if_noteq_op,
     if_lesseq_op, if_greatereq_op, if_less_op, if_greater_op,
     call_op, param_op, ret_op, getretval_op, funcstart_op, funcend_op,
     tablecreate_op, tablegetelem_op, tablesetelem_op, jump_op

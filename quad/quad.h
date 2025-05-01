@@ -18,6 +18,30 @@ quad_writeQuadsToFile(char* filename);
 unsigned int
 quad_nextQuadLabel();
 
+unsigned int
+quad_totalQuads();
+
+IOPCodeType
+quad_getOpcode(unsigned int i);
+
+Quad*
+quad_getAt(unsigned int i);
+
+Expr*
+quad_getArg1(Quad* q);
+
+Expr*
+quad_getArg2(Quad* q);
+
+Expr*
+quad_getResult(Quad* q);
+
+unsigned
+quad_getLine(Quad* q);
+
+void
+quad_setTargetAddress(Quad* q, unsigned taddress);
+
 void
 quad_patchLabel(unsigned quadNo, unsigned label);
 

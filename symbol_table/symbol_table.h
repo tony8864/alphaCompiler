@@ -1,5 +1,8 @@
+
 #ifndef SYM_TAB_H
 #define SYM_TAB_H
+
+#include "../scope_space/scope_space.h"
 
 typedef struct SymbolTableEntry SymbolTableEntry;
 typedef struct SymbolTable SymbolTable;
@@ -40,6 +43,18 @@ symtab_getEntryScope(SymbolTableEntry* entry);
 
 SymbolType
 symtab_getEntryType(SymbolTableEntry* entry);
+
+unsigned
+symtab_getVariableOffset(SymbolTableEntry* entry);
+
+ScopeSpaceType
+symtab_getVariableSpace(SymbolTableEntry* entry);
+
+unsigned int
+symtab_getFunctionAddress(SymbolTableEntry* entry);
+
+unsigned int
+symtab_getFunctionLocalSize(SymbolTableEntry* entry);
 
 void
 symtab_setFunctionLocal(SymbolTableEntry* entry, unsigned totalLocals);

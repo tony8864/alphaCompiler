@@ -2,6 +2,7 @@
 #include "../scope_stack/scope_stack.h"
 #include "../lc_stack/lc_stack.h"
 #include "../quad/quad.h"
+#include "../tcode/tcode.h"
 #include "parser_util.h"
 
 #include <string.h>
@@ -82,10 +83,22 @@ unsigned
 isInsideFunction();
 
 Expr*
-handleConstnumExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line);
+handleConstnumArithmExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line);
 
 Expr*
 handleArithmeticExpression(Expr* e1, Expr* e2, IOPCodeType type, unsigned int line);
+
+Expr*
+handleConstNumRelationalExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line);
+
+Expr*
+handleRelationalExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line);
+
+void
+handlePrints();
+
+void
+handleCleanups();
 
 /* ======================================== IMPLEMENTATION ======================================== */
 void
@@ -93,6 +106,7 @@ parserUtil_initialize() {
     table = symtab_initialize();
   
     insertLibraryFunctions();
+
     scopeStack_initialize();
     scopeSpace_initialize();
 
@@ -103,18 +117,11 @@ parserUtil_initialize() {
 }
 
 void
-parserUtil_cleanup() {
-    
-    symtab_printScopeTable(table);
-    scopeStack_print();
-    quad_printQuads();
-
+parserUtil_finalize() {
+    tcode_generateInstructions();
+    handlePrints();
     quad_writeQuadsToFile("quads.txt");
-
-    scopeStack_cleanup();
-    scopeSpace_cleanup();
-
-    lcStack_cleanup();
+    handleCleanups();
 }
 
 void
@@ -223,6 +230,7 @@ parserUtil_handleFuncPrefix(char* name, unsigned int line) {
     entry = handleFunctionDefinition(name, line);
     arg = icode_getLvalueExpr(entry);
 
+    quad_emit(jump_op, NULL, NULL, NULL, 0, line);
     quad_emit(funcstart_op, arg, NULL, NULL, 0, line);
 
     SCOPE_ENTER();
@@ -250,7 +258,7 @@ parserUtil_handleFuncbody() {
 }
 
 SymbolTableEntry*
-parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, unsigned int line) {
+parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned int M, unsigned totalLocals, unsigned int line) {
     Expr* arg;
 
     symtab_setFunctionLocal(funcPrefix, totalLocals);
@@ -261,6 +269,7 @@ parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, uns
     arg = icode_getLvalueExpr(funcPrefix);
 
     quad_emit(funcend_op, arg, NULL, NULL, 0, line);
+    quad_patchLabel(M - 2, quad_nextQuadLabel());
 
     symtab_hide(table, scope);
     SCOPE_EXIT();
@@ -604,7 +613,7 @@ parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
     Expr* e;
 
     if (icode_getExprType(expr1) == constnum_e && icode_getExprType(expr2)) {
-        e = handleConstnumExpression(expr1, expr2, op, line);
+        e = handleConstnumArithmExpression(expr1, expr2, op, line);
     }
     else {
         e = handleArithmeticExpression(expr1, expr2, op, line);
@@ -621,13 +630,12 @@ parserUtil_handleRelationalExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
 
     Expr* e;
 
-    e = icode_newExpr(boolexpr_e);
-    icode_setExprEntry(e, newTemp(line));
-
-    quad_emit(op, expr1, expr2, NULL, quad_nextQuadLabel()+3, line);
-    quad_emit(assign_op, icode_newConstBoolean(0), NULL, e, 0, line);
-    quad_emit(jump_op, NULL, NULL, NULL, quad_nextQuadLabel()+2, line);
-    quad_emit(assign_op, icode_newConstBoolean(1), NULL, e, 0, line);
+    if (icode_getExprType(expr1) == constnum_e && icode_getExprType(expr2)) {
+        e = handleConstNumRelationalExpression(expr1, expr2, op, line);
+    }
+    else {
+        e = handleRelationalExpression(expr1, expr2, op, line);
+    }
 
     return e;
 }
@@ -729,7 +737,7 @@ parserUtil_handleWhileStatement(unsigned int whileStart, unsigned int whileCond,
     }
 
     quad_patchList(contList, whileStart);
-    quad_patchList(breakList, quad_nextQuadLabel() + 1);
+    quad_patchList(breakList, quad_nextQuadLabel());
 }
 
 void
@@ -748,7 +756,7 @@ parserUtil_handleForStatement(ForPrefix* forPrefix, unsigned int N1, unsigned in
     }
 
     quad_patchList(contList, N1 + 2);
-    quad_patchList(breakList, quad_nextQuadLabel() + 1);
+    quad_patchList(breakList, quad_nextQuadLabel());
 }
 
 ForPrefix*
@@ -1071,7 +1079,7 @@ isInsideFunction() {
 }
 
 Expr*
-handleConstnumExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) {
+handleConstnumArithmExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) {
     Expr* e;
     double num1, num2;
     
@@ -1079,10 +1087,10 @@ handleConstnumExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) 
     num2 = icode_getNumConst(e2);
 
     switch (op) {
-        case add_op: e = icode_newConstNum(num1 + num2); break;
-        case sub_op: e = icode_newConstNum(num1 - num2); break;
-        case mul_op: e = icode_newConstNum(num1 * num2); break;
-        case mod_op: e = icode_newConstNum((int)num1 % (int)num2); break;
+        case add_op: e = icode_newConstNum(num1 + num2);            break;
+        case sub_op: e = icode_newConstNum(num1 - num2);            break;
+        case mul_op: e = icode_newConstNum(num1 * num2);            break;
+        case mod_op: e = icode_newConstNum((int)num1 % (int)num2);  break;
         case div_op:
             if (num2 == 0) {
                 printf("Error at line %u: Cannot divide by 0.\n", line);
@@ -1110,4 +1118,61 @@ handleArithmeticExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line
     quad_emit(op, e1, e2, e, 0, line);
 
     return e;
+}
+
+
+Expr*
+handleConstNumRelationalExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) {
+    Expr* e;
+    double num1, num2;
+    
+    num1 = icode_getNumConst(e1);
+    num2 = icode_getNumConst(e2);
+
+    switch (op) {
+        case if_greater_op:     e = icode_newConstBoolean(num1 > num2);  break;
+        case if_greatereq_op:   e = icode_newConstBoolean(num1 >= num2); break;
+        case if_less_op:        e = icode_newConstBoolean(num1 < num2);  break;
+        case if_lesseq_op:      e = icode_newConstBoolean(num1 <= num2); break;
+        case if_eq_op:          e = icode_newConstBoolean(num1 == num2); break;
+        case if_noteq_op:       e = icode_newConstBoolean(num1 != num2); break;
+        default:
+            printf("Error at line %u: opcode not supported for const num expression.\n", line);
+            exit(1);
+    }
+
+    icode_setExprEntry(e, newTemp(line));
+    quad_emit(op, e1, e2, e, 0, line);
+
+    return e;
+}
+
+Expr*
+handleRelationalExpression(Expr* e1, Expr* e2, IOPCodeType op, unsigned int line) {
+    Expr* e;
+
+    e = icode_newExpr(boolexpr_e);
+    icode_setExprEntry(e, newTemp(line));
+
+    quad_emit(op, e1, e2, NULL, quad_nextQuadLabel()+3, line);
+    quad_emit(assign_op, icode_newConstBoolean(0), NULL, e, 0, line);
+    quad_emit(jump_op, NULL, NULL, NULL, quad_nextQuadLabel()+2, line);
+    quad_emit(assign_op, icode_newConstBoolean(1), NULL, e, 0, line);
+
+    return e;
+}
+
+void
+handlePrints() {
+    symtab_printScopeTable(table);
+    scopeStack_print();
+    quad_printQuads();
+    tcode_printInstructions();
+}
+
+void
+handleCleanups() {
+    scopeStack_cleanup();
+    scopeSpace_cleanup();
+    lcStack_cleanup();
 }

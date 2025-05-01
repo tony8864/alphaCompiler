@@ -8,7 +8,7 @@ void
 parserUtil_initialize();
 
 void
-parserUtil_cleanup();
+parserUtil_finalize();
 
 void
 parserUtil_printSymbolTable();
@@ -41,7 +41,7 @@ unsigned
 parserUtil_handleFuncbody();
 
 SymbolTableEntry*
-parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned totalLocals, unsigned int line);
+parserUtil_handleFuncdef(SymbolTableEntry* funcPrefix, unsigned M,  unsigned totalLocals, unsigned int line);
 
 Expr*
 parserUtil_handleLvalueIdentifierTableItem(Expr* lv, char* identifier, unsigned int line);

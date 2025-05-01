@@ -203,6 +203,50 @@ symtab_getEntryType(SymbolTableEntry* entry) {
     return entry->type;
 }
 
+unsigned
+symtab_getVariableOffset(SymbolTableEntry* entry) {
+    if (isVariableSymbol(entry->type)) {
+        return entry->value.varValue->offset;
+    }
+    else {
+        printf("Error: This symbol is not a variable.\n");
+        exit(1);
+    }
+}
+
+unsigned int
+symtab_getFunctionAddress(SymbolTableEntry* entry) {
+    if (isFunctionSymbol(entry->type)) {
+        return entry->value.funcValue->iaddress;
+    }
+    else {
+        printf("Error: This symbol is not a function.\n");
+        exit(1);
+    }
+}
+
+unsigned int
+symtab_getFunctionLocalSize(SymbolTableEntry* entry) {
+    if (isFunctionSymbol(entry->type)) {
+        return entry->value.funcValue->totalLocals;
+    }
+    else {
+        printf("Error: This symbol is not a function.\n");
+        exit(1);
+    }
+}
+
+ScopeSpaceType
+symtab_getVariableSpace(SymbolTableEntry* entry) {
+    if (isVariableSymbol(entry->type)) {
+        return entry->value.varValue->space;
+    }
+    else {
+        printf("Error: This symbol is not a variable.\n");
+        exit(1);
+    }
+}
+
 void
 symtab_setFunctionLocal(SymbolTableEntry* entry, unsigned totalLocals) {
     if (isFunctionSymbol(entry->type)) {

@@ -173,7 +173,7 @@ funcname:       IDENTIFIER                                      { $$ = $1; } | /
 funcprefix:     FUNCTION funcname                               { $$ = parserUtil_handleFuncPrefix($2, yylineno); };
 funcargs:       LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS       { parserUtil_handleFuncArgs(); };
 funcbody:       funcblockstart funcblock funcblockend           { $$ = parserUtil_handleFuncbody(); };
-funcdef:        funcprefix funcargs funcbody                    { $$ = parserUtil_handleFuncdef($1, $3, yylineno); };
+funcdef:        funcprefix M funcargs funcbody                  { $$ = parserUtil_handleFuncdef($1, $2, $4, yylineno); };
 funcblock:      LEFT_CURLY_BRACKET stmts RIGHT_CURLY_BRACKET | LEFT_CURLY_BRACKET RIGHT_CURLY_BRACKET ;
            
 const:
@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
 
     parserUtil_initialize();
     yyparse();
-    parserUtil_cleanup();
+    parserUtil_finalize();
     return 0;
 }
 

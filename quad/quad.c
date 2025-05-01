@@ -12,13 +12,14 @@ typedef struct Quad {
     Expr* result;
     unsigned label;
     unsigned line;
+    unsigned taddress;
 } Quad;
 
 Quad* quads = NULL;
 unsigned total = 0;
 unsigned int currQuad = 0;
 
-#define EXPAND_SIZE 1014
+#define EXPAND_SIZE 1024
 #define CURR_SIZE (total * sizeof(Quad))
 #define NEW_SIZE (EXPAND_SIZE * sizeof(Quad) + CURR_SIZE)
 
@@ -89,6 +90,53 @@ void quad_printQuads() {
 unsigned int
 quad_nextQuadLabel() {
     return currQuad;
+}
+
+unsigned int
+quad_totalQuads() {
+    return currQuad;
+}
+
+IOPCodeType
+quad_getOpcode(unsigned int i) {
+    assert(i < currQuad);
+    return quads[i].op;
+}
+
+Quad*
+quad_getAt(unsigned int i) {
+    assert(i < currQuad);
+    return &quads[i];
+}
+
+Expr*
+quad_getArg1(Quad* q) {
+    assert(q);
+    return q->arg1;
+}
+
+Expr*
+quad_getArg2(Quad* q) {
+    assert(q);
+    return q->arg2;
+}
+
+Expr*
+quad_getResult(Quad* q) {
+    assert(q);
+    return q->result;
+}
+
+unsigned
+quad_getLine(Quad* q) {
+    assert(q);
+    return q->line;
+}
+
+void
+quad_setTargetAddress(Quad* q, unsigned taddress) {
+    assert(q);
+    q->taddress = taddress;
 }
 
 void
@@ -260,6 +308,7 @@ get_constBoolExpr_name(Expr* e) {
 
 static void
 write_quads(FILE* out) {
+    fprintf(out, "---------------------------------------------QUADS---------------------------------------------\n");
     fprintf(out, "%-10s %-20s %-20s %-20s %-20s %-6s %-6s\n",
         "Quad#", "opcode", "result", "arg1", "arg2", "LABEL", "LINE");
     fprintf(out, "---------------------------------------------------------------------------------------------------------\n");
@@ -291,4 +340,5 @@ write_quads(FILE* out) {
                 line_buf
             );
     }
+    fprintf(out, "\n");
 }
