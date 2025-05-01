@@ -84,6 +84,18 @@ static void
 generate_UMINUS(Quad* q);
 
 static void
+generate_NEWTABLE(Quad* q);
+
+static void
+generate_TABLEGETELEM(Quad* q);
+
+static void
+generate_TABLESETELEM(Quad* q);
+
+static void
+generate_ASSIGN(Quad* q);
+
+static void
 make_operand(Expr* e, vmarg* arg);
 
 static void
@@ -120,6 +132,10 @@ generator_func_t generators[] = {
     generate_DIV,
     generate_MOD,
     generate_UMINUS,
+    generate_ASSIGN,
+    generate_NEWTABLE,
+    generate_TABLEGETELEM,
+    generate_TABLESETELEM,
 };
 
 /* ------------------------------------------ Implementation ------------------------------------------ */
@@ -242,7 +258,26 @@ generate_UMINUS(Quad* quad) {
 }
 
 static void
+generate_ASSIGN(Quad* q) { generate(assign_v, q); }
+
+static void
+generate_NEWTABLE(Quad* q) { generate(newtable_v, q); }
+
+static void
+generate_TABLEGETELEM(Quad* q) { generate(tablegetelem_v, q); }
+
+static void
+generate_TABLESETELEM(Quad* q) { generate(tablesetelem_v, q); }
+
+static void
 make_operand(Expr* e, vmarg* arg) {
+
+    if (e == NULL) {
+        arg->val = 0;
+        arg->type = notype_a;
+        return;
+    }
+
     switch (icode_getExprType(e)) {
         case var_e:
         case tableitem_e:
@@ -418,6 +453,11 @@ write_instructions(FILE* out) {
 
 static char*
 vmarg_to_string(vmarg arg) {
+
+    if (arg.type == notype_a) {
+        return "";
+    }
+
     const char* type_str = vmarg_type_to_string(arg.type);
 
     char* result = malloc(64);
@@ -475,6 +515,7 @@ vmarg_type_to_string(vmarg_t type) {
         case userfunc_a:   return "userfunc";
         case libfunc_a:    return "libfunc";
         case retval_a:     return "retval";
+        case notype_a:     return "";
         default:           return "unknown";
     }
 }

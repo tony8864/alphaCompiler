@@ -27,6 +27,7 @@ typedef enum {
     userfunc_a,
     libfunc_a,
     retval_a,
+    notype_a,
 } vmarg_t;
 
 typedef struct vmarg vmarg;
