@@ -24,6 +24,9 @@ quad_totalQuads();
 IOPCodeType
 quad_getOpcode(unsigned int i);
 
+int
+quad_getIndex(Quad* q);
+
 Quad*
 quad_getAt(unsigned int i);
 
@@ -38,6 +41,12 @@ quad_getResult(Quad* q);
 
 unsigned
 quad_getLine(Quad* q);
+
+unsigned
+quad_getLabel(Quad* q);
+
+unsigned
+quad_getTargetAddress(Quad* q);
 
 void
 quad_setTargetAddress(Quad* q, unsigned taddress);

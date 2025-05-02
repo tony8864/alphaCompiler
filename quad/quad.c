@@ -103,6 +103,12 @@ quad_getOpcode(unsigned int i) {
     return quads[i].op;
 }
 
+int
+quad_getIndex(Quad* q) {
+    assert(q);
+    return q - quads;
+}
+
 Quad*
 quad_getAt(unsigned int i) {
     assert(i < currQuad);
@@ -131,6 +137,18 @@ unsigned
 quad_getLine(Quad* q) {
     assert(q);
     return q->line;
+}
+
+unsigned
+quad_getLabel(Quad* q) {
+    assert(q);
+    return q->label;
+}
+
+unsigned
+quad_getTargetAddress(Quad* q) {
+    assert(q);
+    return q->taddress;
 }
 
 void

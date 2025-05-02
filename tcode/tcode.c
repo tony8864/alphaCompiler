@@ -28,6 +28,15 @@ typedef struct userfunc {
     char* id;
 } userfunc;
 
+typedef struct IncompleteJump {
+    unsigned instrNo;
+    unsigned iaddress;
+    struct IncompleteJump* next;
+} IncompleteJump;
+
+IncompleteJump* ij_head = NULL;
+unsigned ij_total = 0;
+
 instruction* instructions = NULL;
 unsigned totalInstructions = 0;
 unsigned int currInstruction = 0;
@@ -66,6 +75,9 @@ static void
 generate(vmopcode op, Quad* quad);
 
 static void
+generate_relational(vmopcode op, Quad* quad);
+
+static void
 generate_ADD(Quad* q);
 
 static void
@@ -94,6 +106,27 @@ generate_TABLESETELEM(Quad* q);
 
 static void
 generate_ASSIGN(Quad* q);
+
+static void
+generate_JUMP(Quad* q);
+
+static void
+generate_IF_EQ(Quad* q);
+
+static void
+generate_IF_NOTEQ(Quad* q);
+
+static void
+generate_IF_GREATER(Quad* q);
+
+static void
+generate_IF_GREATEREQ(Quad* q);
+
+static void
+generate_IF_LESS(Quad* q);
+
+static void
+generate_IF_LESSEQ(Quad* q);
 
 static void
 make_operand(Expr* e, vmarg* arg);
@@ -125,6 +158,12 @@ vmarg_to_string(vmarg arg);
 static const char*
 vmarg_type_to_string(vmarg_t type);
 
+static void
+add_incomplete_jump(unsigned instrNo, unsigned iaddress);
+
+static void
+patch_incomplete_jumps();
+
 generator_func_t generators[] = {
     generate_ADD,
     generate_SUB,
@@ -136,6 +175,13 @@ generator_func_t generators[] = {
     generate_NEWTABLE,
     generate_TABLEGETELEM,
     generate_TABLESETELEM,
+    generate_JUMP,
+    generate_IF_EQ,
+    generate_IF_NOTEQ,
+    generate_IF_GREATER,
+    generate_IF_GREATEREQ,
+    generate_IF_LESS,
+    generate_IF_LESSEQ
 };
 
 /* ------------------------------------------ Implementation ------------------------------------------ */
@@ -161,6 +207,26 @@ tcode_generateInstructions() {
         
         (*generators[op])(quad);
     }
+
+    patch_incomplete_jumps();
+}
+
+void
+tcode_printStringConsts() {
+    printf("String consts:\n");
+    for (int i = 0; i < totalStringConsts; i++) {
+        printf("%d: %s\n", i, stringConsts[i]);
+    }
+    printf("\n");
+}
+
+void
+tcode_printNumConsts() {
+    printf("Num consts:\n");
+    for (int i =0; i < totalNumConsts; i++) {
+        printf("%d: %f\n", i, numConsts[i]);
+    }
+    printf("\n");
 }
 
 /* ------------------------------------------ Static Definitions ------------------------------------------ */
@@ -215,25 +281,66 @@ generate(vmopcode op, Quad* quad) {
 }
 
 static void
+generate_relational(vmopcode op, Quad* quad) {
+    
+    Expr* arg1;
+    Expr* arg2;
+    instruction instr;
+    unsigned quad_label;
+    int quad_index;
+
+    arg1 = quad_getArg1(quad);
+    arg2 = quad_getArg2(quad);
+    quad_label = quad_getLabel(quad);
+    quad_index = quad_getIndex(quad);
+
+    instr.opcode = op;
+    instr.result.type = label_a;
+    instr.srcLine = quad_getLine(quad);
+
+    // must delete after ij patch
+    instr.result.val = 0;
+
+    make_operand(arg1, &instr.arg1);
+    make_operand(arg2, &instr.arg2);
+
+    if (quad_label < quad_index) {
+        Quad* target_quad = quad_getAt(quad_label);
+        instr.result.val = quad_getTargetAddress(target_quad);
+    }
+    else {
+        add_incomplete_jump(currInstruction, quad_label);
+    }
+
+    quad_setTargetAddress(quad, currInstruction);
+
+    emit(instr);
+}
+
+static void
 make_numberOperand(vmarg* arg, double val) {
     arg->val = consts_newnumber(val);
     arg->type = number_a;
 }
 
-static void
-generate_ADD(Quad* q) { generate(add_v, q); }
+static void generate_ADD(Quad* q) { generate(add_v, q); }
+static void generate_SUB(Quad* q) { generate(sub_v, q); }
+static void generate_MUL(Quad* q) { generate(mul_v, q); }
+static void generate_DIV(Quad* q) { generate(div_v, q); }
+static void generate_MOD(Quad* q) { generate(mod_v, q); }
 
-static void
-generate_SUB(Quad* q) { generate(sub_v, q); }
+static void generate_ASSIGN(Quad* q)        { generate(assign_v, q); } 
+static void generate_NEWTABLE(Quad* q)      { generate(newtable_v, q); }
+static void generate_TABLEGETELEM(Quad* q)  { generate(tablegetelem_v, q); }
+static void generate_TABLESETELEM(Quad* q)  { generate(tablesetelem_v, q); }
 
-static void
-generate_MUL(Quad* q) { generate(mul_v, q); }
-
-static void
-generate_DIV(Quad* q) { generate(div_v, q); }
-
-static void
-generate_MOD(Quad* q) { generate(mod_v, q); }
+static void generate_JUMP(Quad* q)          { generate_relational(jump_v, q); }
+static void generate_IF_EQ(Quad* q)         { generate_relational(jeq_v, q); }
+static void generate_IF_NOTEQ(Quad* q)      { generate_relational(jne_v, q); }
+static void generate_IF_GREATER(Quad* q)    { generate_relational(jgt_v, q); }
+static void generate_IF_GREATEREQ(Quad* q)  { generate_relational(jge_v, q); }
+static void generate_IF_LESS(Quad* q)       { generate_relational(jlt_v, q); }
+static void generate_IF_LESSEQ(Quad* q)     { generate_relational(jle_v, q); }
 
 static void
 generate_UMINUS(Quad* quad) {
@@ -256,18 +363,6 @@ generate_UMINUS(Quad* quad) {
 
     emit(instr);
 }
-
-static void
-generate_ASSIGN(Quad* q) { generate(assign_v, q); }
-
-static void
-generate_NEWTABLE(Quad* q) { generate(newtable_v, q); }
-
-static void
-generate_TABLEGETELEM(Quad* q) { generate(tablegetelem_v, q); }
-
-static void
-generate_TABLESETELEM(Quad* q) { generate(tablesetelem_v, q); }
 
 static void
 make_operand(Expr* e, vmarg* arg) {
@@ -470,6 +565,54 @@ vmarg_to_string(vmarg arg) {
     return result;
 }
 
+static void
+add_incomplete_jump(unsigned instrNo, unsigned iaddress) {
+    IncompleteJump* newJump;
+    IncompleteJump* curr = ij_head;
+    IncompleteJump* prev = NULL;
+
+    while (curr) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    newJump = malloc(sizeof(IncompleteJump));
+    newJump->instrNo = instrNo;
+    newJump->iaddress = iaddress;
+    newJump->next = NULL;
+
+    if (prev == NULL) {
+        ij_head = newJump;
+    }
+    else {
+        prev->next = newJump;
+    }
+
+    ij_total += 1;
+}
+
+static void
+patch_incomplete_jumps() {
+    IncompleteJump* curr = ij_head;
+    unsigned instrNo;
+    unsigned iaddress;
+
+    while (curr) {
+        iaddress = curr->iaddress;
+        instrNo = curr->instrNo;
+
+        if (iaddress == quad_nextQuadLabel()) {
+            instructions[instrNo].result.val = currInstruction;
+        }
+        else {
+            Quad* q = quad_getAt(iaddress);
+            instructions[instrNo].result.val = quad_getTargetAddress(q);
+        }
+
+        curr = curr->next;
+    }
+}
+
 static const char*
 vmopcode_to_string(vmopcode op) {
     switch (op) {
@@ -483,6 +626,7 @@ vmopcode_to_string(vmopcode op) {
         case and_v:          return "and_v";
         case or_v:           return "or_v";
         case not_v:          return "not_v";
+        case jump_v:         return "jump_v";
         case jeq_v:          return "jeq_v";
         case jne_v:          return "jne_v";
         case jle_v:          return "jle_v";

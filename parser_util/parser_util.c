@@ -1167,6 +1167,8 @@ handlePrints() {
     symtab_printScopeTable(table);
     scopeStack_print();
     quad_printQuads();
+    tcode_printStringConsts();
+    tcode_printNumConsts();
     tcode_printInstructions();
 }
 
