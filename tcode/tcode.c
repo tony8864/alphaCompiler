@@ -129,10 +129,25 @@ static void
 generate_IF_LESSEQ(Quad* q);
 
 static void
+generate_NOT(Quad* q);
+
+static void
+generate_OR(Quad* q);
+
+static void
+generate_AND(Quad* q);
+
+static void
 make_operand(Expr* e, vmarg* arg);
 
 static void
 make_numberOperand(vmarg* arg, double val);
+
+static void
+make_boolOperand(vmarg* arg, unsigned val);
+
+static void
+reset_operand(vmarg* arg);
 
 static unsigned
 consts_newstring(char* s);
@@ -181,7 +196,10 @@ generator_func_t generators[] = {
     generate_IF_GREATER,
     generate_IF_GREATEREQ,
     generate_IF_LESS,
-    generate_IF_LESSEQ
+    generate_IF_LESSEQ,
+    generate_NOT,
+    generate_OR,
+    generate_AND,
 };
 
 /* ------------------------------------------ Implementation ------------------------------------------ */
@@ -298,9 +316,6 @@ generate_relational(vmopcode op, Quad* quad) {
     instr.result.type = label_a;
     instr.srcLine = quad_getLine(quad);
 
-    // must delete after ij patch
-    instr.result.val = 0;
-
     make_operand(arg1, &instr.arg1);
     make_operand(arg2, &instr.arg2);
 
@@ -323,6 +338,18 @@ make_numberOperand(vmarg* arg, double val) {
     arg->type = number_a;
 }
 
+static void
+make_boolOperand(vmarg* arg, unsigned val) {
+    arg->val = val;
+    arg->type = bool_a;
+}
+
+static void
+reset_operand(vmarg* arg) {
+    arg->type = notype_a;
+    arg->val = 0;
+}
+
 static void generate_ADD(Quad* q) { generate(add_v, q); }
 static void generate_SUB(Quad* q) { generate(sub_v, q); }
 static void generate_MUL(Quad* q) { generate(mul_v, q); }
@@ -341,6 +368,150 @@ static void generate_IF_GREATER(Quad* q)    { generate_relational(jgt_v, q); }
 static void generate_IF_GREATEREQ(Quad* q)  { generate_relational(jge_v, q); }
 static void generate_IF_LESS(Quad* q)       { generate_relational(jlt_v, q); }
 static void generate_IF_LESSEQ(Quad* q)     { generate_relational(jle_v, q); }
+
+static void
+generate_NOT(Quad* q) {
+    Expr* arg1;
+    Expr* result;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+    result = quad_getResult(q);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    instr.srcLine = quad_getLine(q);
+
+    // 1st emit
+    instr.opcode = jeq_v;
+    instr.result.type = label_a;
+    instr.result.val = currInstruction + 3;
+    make_operand(arg1, &instr.arg1);
+    make_boolOperand(&instr.arg2, 0);
+    emit(instr);
+
+    // 2nd emit
+    instr.opcode = assign_v;
+    reset_operand(&instr.arg2);
+    make_boolOperand(&instr.arg1, 0);
+    make_operand(result, &instr.result);
+    emit(instr);
+
+    // 3rd emit
+    instr.opcode = jump_v;
+    instr.result.type = label_a;
+    instr.result.val = currInstruction + 2;
+    reset_operand(&instr.arg1);
+    reset_operand(&instr.arg2);
+    emit(instr);
+
+    // 4th emit
+    instr.opcode = assign_v;
+    reset_operand(&instr.arg2);
+    make_boolOperand(&instr.arg1, 1);
+    make_operand(result, &instr.result);
+    emit(instr);
+}
+
+static void
+generate_OR(Quad* q) {
+    Expr* arg1;
+    Expr* arg2;
+    Expr* result;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+    arg2 = quad_getArg2(q);
+    result = quad_getResult(q);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    instr.srcLine = quad_getLine(q);
+
+    // 1st emit
+    instr.opcode = jeq_v;
+    instr.result.type = label_a;
+    instr.result.val = currInstruction + 4;
+    make_operand(arg1, &instr.arg1);
+    make_boolOperand(&instr.arg2, 1);
+    emit(instr);
+
+    // 2nd emit
+    instr.result.val = currInstruction + 3;
+    make_operand(arg2, &instr.arg1);
+    emit(instr);
+
+    // 3rd emit
+    instr.opcode = assign_v;
+    reset_operand(&instr.arg2);
+    make_boolOperand(&instr.arg1, 0);
+    make_operand(result, &instr.result);
+    emit(instr);
+
+    // 4th emit
+    instr.opcode = jump_v;
+    instr.result.type = label_a;
+    instr.result.val = currInstruction + 2;
+    reset_operand(&instr.arg1);
+    reset_operand(&instr.arg2);
+    emit(instr);
+
+    // 5th emit
+    instr.opcode = assign_v;
+    make_boolOperand(&instr.arg1, 0);
+    make_operand(result, &instr.result);
+    emit(instr);
+}
+
+static void
+generate_AND(Quad* q) {
+    Expr* arg1;
+    Expr* arg2;
+    Expr* result;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+    arg2 = quad_getArg2(q);
+    result = quad_getResult(q);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    instr.srcLine = quad_getLine(q);
+
+    // 1st emit
+    instr.opcode = jeq_v;
+    instr.result.type = label_a;
+    instr.result.val = currInstruction + 4;
+    make_operand(arg1, &instr.arg1);
+    make_boolOperand(&instr.arg2, 0);
+    emit(instr);
+
+    // 2nd emit
+    instr.result.val = currInstruction + 3;
+    make_operand(arg2, &instr.arg1);
+    emit(instr);
+
+    // 3rd emit
+    instr.opcode = assign_v;
+    reset_operand(&instr.arg2);
+    make_boolOperand(&instr.arg1, 1);
+    make_operand(result, &instr.result);
+    emit(instr);
+
+    // 4th emit
+    instr.opcode = jump_v;
+    instr.result.type = label_a;
+    instr.result.val = currInstruction + 2;
+    reset_operand(&instr.arg1);
+    emit(instr);
+
+    // 5th emit
+    instr.opcode = assign_v;
+    reset_operand(&instr.arg2);
+    make_boolOperand(&instr.arg1, 0);
+    make_operand(result, &instr.result);
+    emit(instr);
+}
 
 static void
 generate_UMINUS(Quad* quad) {
