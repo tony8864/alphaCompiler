@@ -206,6 +206,27 @@ patch_incomplete_jumps();
 static void
 backpatch(RetList* rlist);
 
+static void
+writeMagicNumber(FILE* file);
+
+static void
+writeArrays(FILE* file);
+
+static void
+writeStringArray(FILE* file);
+
+static void
+writeNumberArray(FILE* file);
+
+static void
+writeUserFuncArray(FILE* file);
+
+static void
+writeLibFuncArray(FILE* file);
+
+static void
+writeCode(FILE* file);
+
 generator_func_t generators[] = {
     generate_ADD,
     generate_SUB,
@@ -303,6 +324,24 @@ tcode_printNumConsts() {
         printf("%d: %f\n", i, numConsts[i]);
     }
     printf("\n");
+}
+
+void
+tcode_createBinaryFile(char* filename) {
+    FILE* file;
+
+    file = fopen(filename, "w");
+
+    if (!file) {
+        printf("Error opening file to write instructions.\n");
+        exit(1);
+    }
+
+    writeMagicNumber(file);
+    writeArrays(file);
+    writeCode(file);
+
+    fclose(file);
 }
 
 /* ------------------------------------------ Static Definitions ------------------------------------------ */
@@ -522,7 +561,7 @@ generate_OR(Quad* q) {
 
     // 5th emit
     instr.opcode = assign_v;
-    make_boolOperand(&instr.arg1, 0);
+    make_boolOperand(&instr.arg1, 1);
     make_operand(result, &instr.result);
     emit(instr);
 }
@@ -703,6 +742,8 @@ generate_FUNCEND(Quad* q) {
     quad_setTargetAddress(q, currInstruction);
 
     emit(instr);
+
+    funcStack_freeRetList(rlist);
 }
 
 static void
@@ -1050,5 +1091,88 @@ vmarg_type_to_string(vmarg_t type) {
         case retval_a:     return "retval";
         case notype_a:     return "";
         default:           return "unknown";
+    }
+}
+
+static void
+writeMagicNumber(FILE* file) {
+    unsigned magicnumber = 340200501;
+    fprintf(file, "%u\n", magicnumber);
+}
+
+static void
+writeArrays(FILE* file) {
+    writeStringArray(file);
+    writeNumberArray(file);
+    writeUserFuncArray(file);
+    writeLibFuncArray(file);
+}
+
+static void
+writeStringArray(FILE* file) {
+    char* str;
+    fprintf(file, "%d ", totalStringConsts);
+    for (int i = 0; i < totalStringConsts; i++) {
+        str = stringConsts[i];
+        fprintf(file, "%d %s ", (int) strlen(str), str);
+    }
+    fprintf(file, "\n");
+}
+
+static void
+writeNumberArray(FILE* file) {
+    double num;
+    fprintf(file, "%d ", totalNumConsts);
+    for (int i = 0; i < totalNumConsts; i++) {
+        num = numConsts[i];
+        fprintf(file, "%f ", num);
+    }
+    fprintf(file, "\n");
+}
+
+static void
+writeUserFuncArray(FILE* file) {
+    userfunc f;
+    unsigned addr;
+    unsigned localSize;
+    char* id;
+    fprintf(file, "%d ", totalUserFuncs);
+    for (int i = 0; i < totalUserFuncs; i++) {
+        f = userFuncs[i];
+        addr = f.address;
+        localSize = f.localSize;
+        id = f.id;
+        fprintf(file, "%u %u %d %s ", addr, localSize, (int) strlen(id) ,id);
+    }
+    fprintf(file, "\n");
+}
+
+static void
+writeLibFuncArray(FILE* file) {
+    char* lib;
+    fprintf(file, "%d ", totalNamedLibFuncs);
+    for (int i = 0; i < totalNamedLibFuncs; i++) {
+        lib = namedLibFuncs[i];
+        fprintf(file, "%d %s ", (int) strlen(lib), lib);
+    }
+    fprintf(file, "\n");
+}
+
+static void
+writeCode(FILE* file) {
+    instruction instr;
+    vmarg result;
+    vmarg arg1;
+    vmarg arg2;
+    fprintf(file, "%u\n", currInstruction);
+    for (int i = 0; i < currInstruction; i++) {
+        instr = instructions[i];
+        result = instr.result;
+        arg1 = instr.arg1;
+        arg2 = instr.arg2;
+        fprintf(file, "%u ", instr.opcode);
+        fprintf(file, "%u %u ", result.type, result.val);
+        fprintf(file, "%u %u ", arg1.type, arg1.val);
+        fprintf(file, "%u %u\n", arg2.type, arg2.val);
     }
 }

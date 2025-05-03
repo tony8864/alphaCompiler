@@ -4,6 +4,7 @@
         "type_traits": "c",
         "icode.h": "c",
         "compare": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "quad.h": "c"
     }
 }

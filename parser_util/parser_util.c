@@ -123,6 +123,7 @@ parserUtil_finalize() {
     tcode_generateInstructions();
     handlePrints();
     quad_writeQuadsToFile("quads.txt");
+    tcode_createBinaryFile("binary_code.abc");
     handleCleanups();
 }
 

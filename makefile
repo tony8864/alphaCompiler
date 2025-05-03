@@ -87,5 +87,5 @@ $(OBJ_DIR)/func_stack.o: ${FUNC_STACK_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 clean:
-	rm -f exe scanner.c ${PARSER_C_H}
+	rm -f exe scanner.c ${PARSER_C_H} quads.txt
 	rm -rf $(OBJ_DIR)
