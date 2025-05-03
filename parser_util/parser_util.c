@@ -113,6 +113,8 @@ parserUtil_initialize() {
     lcStack_initialize();
     lcStack_pushLoopCounter();
 
+    tcode_initialize();
+
     quad_emit(jump_op, NULL, NULL, NULL, 1, 0);
 }
 
@@ -932,7 +934,7 @@ handleFunctionDefinition(const char* name, unsigned int line) {
         exit(1);
     }
 
-    entry = symtab_insertFunction(table, name, line, scope, quad_nextQuadLabel() + 1, USERFUNC);
+    entry = symtab_insertFunction(table, name, line, scope, quad_nextQuadLabel(), USERFUNC);
 
     return entry;
 }
@@ -1167,6 +1169,8 @@ handlePrints() {
     symtab_printScopeTable(table);
     scopeStack_print();
     quad_printQuads();
+    tcode_printUserFuncs();
+    tcode_printNamedLibs();
     tcode_printStringConsts();
     tcode_printNumConsts();
     tcode_printInstructions();

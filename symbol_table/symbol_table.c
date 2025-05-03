@@ -259,6 +259,17 @@ symtab_setFunctionLocal(SymbolTableEntry* entry, unsigned totalLocals) {
 }
 
 void
+symtab_setFunctionAddress(SymbolTableEntry* entry, unsigned int addr) {
+    if (isFunctionSymbol(entry->type)) {
+        entry->value.funcValue->iaddress = addr;
+    }
+    else {
+        printf("Error: Cannot set function address to variable symbol.\n");
+        exit(1);
+    }
+}
+
+void
 symtab_printCollisionTable(SymbolTable* table) {
     SymbolTableEntry* head;
     for (int i = 0; i < COLLISION_TABLE_SIZE; i++) {

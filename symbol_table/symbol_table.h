@@ -60,6 +60,9 @@ void
 symtab_setFunctionLocal(SymbolTableEntry* entry, unsigned totalLocals);
 
 void
+symtab_setFunctionAddress(SymbolTableEntry* entry, unsigned int addr);
+
+void
 symtab_printCollisionTable(SymbolTable* table);
 
 void

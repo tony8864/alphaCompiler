@@ -1,5 +1,6 @@
 #include "../symbol_table/symbol_table.h"
 #include "../scope_space/scope_space.h"
+#include "../func_stack/func_stack.h"
 #include "../quad/quad.h"
 
 #include "tcode.h"
@@ -40,6 +41,8 @@ unsigned ij_total = 0;
 instruction* instructions = NULL;
 unsigned totalInstructions = 0;
 unsigned int currInstruction = 0;
+
+FuncStack* funcStack = NULL;
 
 #define EXPAND_SIZE 1024
 #define CURR_SIZE (totalInstructions * sizeof(instruction))
@@ -138,6 +141,24 @@ static void
 generate_AND(Quad* q);
 
 static void
+generate_PARAM(Quad* q);
+
+static void
+generate_CALL(Quad* q);
+
+static void
+generate_GETRETVAL(Quad* q);
+
+static void
+generate_FUNCSTART(Quad* q);
+
+static void
+generate_RETURN(Quad* q);
+
+static void
+generate_FUNCEND(Quad* q);
+
+static void
 make_operand(Expr* e, vmarg* arg);
 
 static void
@@ -145,6 +166,9 @@ make_numberOperand(vmarg* arg, double val);
 
 static void
 make_boolOperand(vmarg* arg, unsigned val);
+
+static void
+make_retvalOperand(vmarg* arg);
 
 static void
 reset_operand(vmarg* arg);
@@ -179,6 +203,9 @@ add_incomplete_jump(unsigned instrNo, unsigned iaddress);
 static void
 patch_incomplete_jumps();
 
+static void
+backpatch(RetList* rlist);
+
 generator_func_t generators[] = {
     generate_ADD,
     generate_SUB,
@@ -200,9 +227,20 @@ generator_func_t generators[] = {
     generate_NOT,
     generate_OR,
     generate_AND,
+    generate_PARAM,
+    generate_CALL,
+    generate_GETRETVAL,
+    generate_FUNCSTART,
+    generate_RETURN,
+    generate_FUNCEND
 };
 
 /* ------------------------------------------ Implementation ------------------------------------------ */
+void
+tcode_initialize() {
+    funcStack = funcStack_initialize();
+}
+
 unsigned int
 tcode_nextInstructionLabel() { return currInstruction; }
 
@@ -227,6 +265,26 @@ tcode_generateInstructions() {
     }
 
     patch_incomplete_jumps();
+}
+
+void
+tcode_printUserFuncs() {
+    userfunc f;
+    printf("User Funcs:\n");
+    for (int i = 0; i < totalUserFuncs; i++) {
+        f = userFuncs[i];
+        printf("[%s, %u] ", f.id, f.address);
+    }
+    printf("\n\n");
+}
+
+void
+tcode_printNamedLibs() {
+    printf("Named libs:\n");
+    for (int i = 0; i < totalNamedLibFuncs; i++) {
+        printf("%d: %s\n", i, namedLibFuncs[i]);
+    }
+    printf("\n");
 }
 
 void
@@ -342,6 +400,12 @@ static void
 make_boolOperand(vmarg* arg, unsigned val) {
     arg->val = val;
     arg->type = bool_a;
+}
+
+static void
+make_retvalOperand(vmarg* arg) {
+    arg->type = retval_a;
+    arg->val = 10;
 }
 
 static void
@@ -514,6 +578,134 @@ generate_AND(Quad* q) {
 }
 
 static void
+generate_PARAM(Quad* q) {
+    Expr* arg1;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+
+    instr.srcLine = quad_getLine(q);
+    instr.opcode = pusharg_v;
+    make_operand(arg1, &instr.arg1);
+    reset_operand(&instr.arg2);
+    reset_operand(&instr.result);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    emit(instr);
+}
+
+static void
+generate_CALL(Quad* q) {
+    Expr* arg1;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+
+    instr.srcLine = quad_getLine(q);
+    instr.opcode = call_v;
+    make_operand(arg1, &instr.arg1);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    emit(instr);
+}
+
+static void
+generate_GETRETVAL(Quad* q) {
+    Expr* result;
+    instruction instr;
+
+    result = quad_getResult(q);
+
+    instr.srcLine = quad_getLine(q);
+    instr.opcode = assign_v;
+    make_operand(result, &instr.result);
+    make_retvalOperand(&instr.arg1);
+
+    quad_setTargetAddress(q, currInstruction);
+    
+    emit(instr);
+}
+
+static void
+generate_FUNCSTART(Quad* q) {
+    Expr* arg1;
+    SymbolTableEntry* entry;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+    entry = icode_getExprEntry(arg1);
+
+    symtab_setFunctionAddress(entry, currInstruction);
+
+    funcStack_pushList(funcStack);
+
+    instr.srcLine = quad_getLine(q);
+    instr.opcode = funcenter_v;
+    make_operand(arg1, &instr.arg1);
+    reset_operand(&instr.arg2);
+    reset_operand(&instr.result);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    emit(instr);
+}
+
+static void
+generate_RETURN(Quad* q) {
+    RetList* rlist;
+    Expr* result;
+    instruction instr;
+
+    result = quad_getResult(q);
+
+    // 1st emit
+    instr.srcLine = quad_getLine(q);
+    instr.opcode = assign_v;
+    make_retvalOperand(&instr.result);
+    make_operand(result, &instr.arg1);
+    reset_operand(&instr.arg2);
+    
+    quad_setTargetAddress(q, currInstruction);
+
+    emit(instr);
+
+    rlist = funcStack_top(funcStack);
+    funcStack_appendToReturnList(rlist, currInstruction);
+
+    // 2nd emit
+    instr.opcode = jump_v;
+    reset_operand(&instr.arg1);
+    reset_operand(&instr.arg2);
+    instr.result.type = label_a;
+    instr.result.val = 0;
+    emit(instr);
+}
+
+static void
+generate_FUNCEND(Quad* q) {
+    RetList* rlist;
+    Expr* arg1;
+    instruction instr;
+
+    arg1 = quad_getArg1(q);
+
+    rlist = funcStack_pop(funcStack);
+    backpatch(rlist);
+
+    instr.srcLine = quad_getLine(q);
+    instr.opcode = funcexit_v;
+    reset_operand(&instr.result);
+    reset_operand(&instr.arg2);
+    make_operand(arg1, &instr.arg1);
+
+    quad_setTargetAddress(q, currInstruction);
+
+    emit(instr);
+}
+
+static void
 generate_UMINUS(Quad* quad) {
 
     Expr* arg1;
@@ -608,7 +800,6 @@ make_operand(Expr* e, vmarg* arg) {
             break;
         }
         default: assert(0);
-
     }
 }
 
@@ -686,6 +877,18 @@ userfuncs_newfunc(SymbolTableEntry* entry) {
     if (totalUserFuncs == USR_FUNCS_SIZE) {
         printf("Error: Cannot add any more user func consts.\n");
         exit(1);
+    }
+
+    unsigned int address;
+    char* id;
+
+    id = (char*) symtab_getEntryName(entry);
+    address = symtab_getFunctionAddress(entry);
+
+    for (int i = 0; i < totalUserFuncs; i++) {
+        if (!strcmp(userFuncs[i].id, id) && userFuncs[i].address == address) {
+            return i;
+        }
     }
 
     userFuncs[totalUserFuncs].address = symtab_getFunctionAddress(entry);
@@ -781,6 +984,21 @@ patch_incomplete_jumps() {
         }
 
         curr = curr->next;
+    }
+}
+
+static void
+backpatch(RetList* rlist) {
+    funcStack_printRetList(rlist);
+    RetNode* curr;
+    unsigned int ret;
+
+    curr = funcStack_getRetNodeHead(rlist);
+
+    while (curr) {
+        ret = funcStack_getRetNodeValue(curr);
+        instructions[ret].result.val = currInstruction;
+        curr = funcStack_getRetNodeNext(curr);
     }
 }
 

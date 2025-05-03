@@ -8,7 +8,7 @@ typedef enum {
     assign_op, tablecreate_op, tablegetelem_op, tablesetelem_op,
     jump_op, if_eq_op, if_noteq_op, if_greater_op, if_greatereq_op, if_less_op, if_lesseq_op,
     not_op, or_op, and_op,
-    call_op, param_op, ret_op, getretval_op, funcstart_op, funcend_op
+    param_op, call_op, getretval_op, funcstart_op, ret_op, funcend_op
 } IOPCodeType;
 
 typedef enum {

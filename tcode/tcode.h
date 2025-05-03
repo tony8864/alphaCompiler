@@ -34,6 +34,9 @@ typedef struct vmarg vmarg;
 typedef struct instruction instruction;
 typedef struct userfunc userfunc;
 
+void
+tcode_initialize();
+
 unsigned int
 tcode_nextInstructionLabel();
 
@@ -42,6 +45,12 @@ tcode_printInstructions();
 
 void
 tcode_generateInstructions();
+
+void
+tcode_printUserFuncs();
+
+void
+tcode_printNamedLibs();
 
 void
 tcode_printStringConsts();
