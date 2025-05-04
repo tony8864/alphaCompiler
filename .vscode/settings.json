@@ -5,6 +5,7 @@
         "icode.h": "c",
         "compare": "c",
         "stdlib.h": "c",
-        "quad.h": "c"
+        "quad.h": "c",
+        "scope_space.h": "c"
     }
 }

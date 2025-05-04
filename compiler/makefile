@@ -14,9 +14,8 @@ OBJECTS = \
 	$(OBJ_DIR)/icode.o \
 	$(OBJ_DIR)/lc_stack.o \
 	${OBJ_DIR}/tcode.o \
-	${OBJ_DIR}/func_stack.o
+	${OBJ_DIR}/func_stack.o \
 
-# Original .c file paths
 FUNC_STACK_C = func_stack/func_stack.c
 TCODE_C = tcode/tcode.c
 LC_STACK_C = lc_stack/lc_stack.c
@@ -31,8 +30,8 @@ SCANNER_UTIL_C = scanner_util/scanner_util.c
 STRING_READER_C = string_reader/string_reader.c
 COMMENT_READER_C = comment_reader/comment_reader.c
 
-exe: ${OBJECTS}
-	gcc -o exe ${OBJECTS}
+acc: ${OBJECTS}
+	gcc -o acc ${OBJECTS}
 
 # Ensure object directory exists
 $(OBJ_DIR):
@@ -87,5 +86,5 @@ $(OBJ_DIR)/func_stack.o: ${FUNC_STACK_C} | $(OBJ_DIR)
 	gcc -c $< -o $@
 
 clean:
-	rm -f exe scanner.c ${PARSER_C_H} quads.txt
+	rm -f acc scanner.c ${PARSER_C_H} quads.txt *.abc
 	rm -rf $(OBJ_DIR)
