@@ -19,6 +19,9 @@ unsigned totalNamedLibFuncs = 0;
 userfunc* userFuncs = NULL;
 unsigned totalUserFuncs = 0;
 
+instruction* instructions = NULL;
+unsigned codeSize;
+
 /* ------------------------------------ Static Declarations ------------------------------------ */
 static void
 readMagicNUmber();
@@ -41,6 +44,12 @@ loadLibFuncs();
 static void
 loadInstructions();
 
+static vmopcode
+readVmopcode();
+
+static void
+readVmarg(vmarg* arg);
+
 static void
 printStringArray();
 
@@ -52,6 +61,18 @@ printUserFuncs();
 
 static void
 printLibFuncs();
+
+static void
+print_instructions();
+
+static const char*
+vmopcode_to_string(vmopcode op);
+
+static char*
+vmarg_to_string(vmarg arg);
+
+static const char*
+vmarg_type_to_string(vmarg_t type);
 
 /* ------------------------------------ Implementation ------------------------------------ */
 void
@@ -70,6 +91,7 @@ loader_loadCode() {
     printNumArray();
     printUserFuncs();
     printLibFuncs();
+    print_instructions();
 }
 
 /* ------------------------------------ Static Definitions ------------------------------------ */
@@ -272,7 +294,60 @@ loadLibFuncs() {
 
 static void
 loadInstructions() {
+    if (fscanf(binaryFile, "%u", &codeSize) != 1) {
+        printf("Error reading code size from binary file.\n");
+        exit(1);
+    }
 
+    instructions = malloc(sizeof(instruction) * codeSize);
+    if (!instructions) {
+        printf("Error allocating memory for instructions.\n");
+        exit(1);
+    }
+
+    vmarg result;
+    vmarg arg1;
+    vmarg arg2;
+    vmopcode op;
+    for (int i = 0; i < codeSize; i++) {
+        op = readVmopcode();
+        readVmarg(&result);
+        readVmarg(&arg1);
+        readVmarg(&arg2);
+
+        instructions[i].opcode = op;
+        instructions[i].result = result;
+        instructions[i].arg1 = arg1;
+        instructions[i].arg2 = arg2;
+    }
+}
+
+static vmopcode
+readVmopcode() {
+    vmopcode op;
+    if (fscanf(binaryFile, "%u", &op) != 1) {
+        printf("Error reading opcode from binary file.\n");
+        exit(1);
+    }
+    return op;
+}
+
+static void
+readVmarg(vmarg* arg) {
+    vmarg_t type;
+    unsigned value;
+    if (fscanf(binaryFile, "%u", &type) != 1) {
+        printf("Error reading vmarg type from binary file.\n");
+        exit(1);
+    }
+
+    if (fscanf(binaryFile, "%u", &value) != 1) {
+        printf("Error reading vmarg value from binary file.\n");
+        exit(1);
+    }
+
+    arg->type = type;
+    arg->val = value;
 }
 
 static void
@@ -308,5 +383,97 @@ printLibFuncs() {
     for (int i = 0; i < totalNamedLibFuncs; i++) {
         lib = namedLibFuncs[i];
         printf("%d: %s\n", i, lib);
+    }
+}
+
+static void
+print_instructions() {
+    fprintf(stdout, "---------------------------------------------INSTRUCTIONS---------------------------------------------\n");
+    fprintf(stdout, "%-10s %-20s %-20s %-20s %-20s %-10s\n",
+         "Instr.", "opcode", "result", "arg1", "arg2", "line");
+    fprintf(stdout, "---------------------------------------------------------------------------------------------------------\n");
+    
+    for (int i = 0; i < codeSize; i++) {
+        instruction instr = instructions[i];
+
+        fprintf(stdout, "%-10d %-20s %-20s %-20s %-20s %-10d\n",
+            i,
+            vmopcode_to_string(instr.opcode),
+            vmarg_to_string(instr.result),
+            vmarg_to_string(instr.arg1),
+            vmarg_to_string(instr.arg2),
+            instr.srcLine
+        );
+    }
+    fprintf(stdout, "\n");
+}
+
+static const char*
+vmopcode_to_string(vmopcode op) {
+    switch (op) {
+        case assign_v:       return "assign_v";
+        case add_v:          return "add_v";
+        case sub_v:          return "sub_v";
+        case mul_v:          return "mul_v";
+        case div_v:          return "div_v";
+        case mod_v:          return "mod_v";
+        case uminus_v:       return "uminus_v";
+        case and_v:          return "and_v";
+        case or_v:           return "or_v";
+        case not_v:          return "not_v";
+        case jump_v:         return "jump_v";
+        case jeq_v:          return "jeq_v";
+        case jne_v:          return "jne_v";
+        case jle_v:          return "jle_v";
+        case jge_v:          return "jge_v";
+        case jlt_v:          return "jlt_v";
+        case jgt_v:          return "jgt_v";
+        case call_v:         return "call_v";
+        case pusharg_v:      return "pusharg_v";
+        case funcenter_v:    return "funcenter_v";
+        case funcexit_v:     return "fucnexit_v";
+        case newtable_v:     return "newtable_v";
+        case tablegetelem_v: return "tablegetelem_v";
+        case tablesetelem_v: return "tablesetelem_v";
+        case nop_v:          return "nop_v";
+        default:             return "UNKNOWN_OPCODE";
+    }
+}
+
+static char*
+vmarg_to_string(vmarg arg) {
+
+    if (arg.type == notype_a) {
+        return "";
+    }
+
+    const char* type_str = vmarg_type_to_string(arg.type);
+
+    char* result = malloc(64);
+    if (!result) {
+        fprintf(stderr, "Error: malloc failed in vmarg_to_string.\n");
+        exit(1);
+    }
+
+    snprintf(result, 64, "[%s, %u]", type_str, arg.val);
+    return result;
+}
+
+static const char*
+vmarg_type_to_string(vmarg_t type) {
+    switch (type) {
+        case label_a:      return "label";
+        case global_a:     return "global";
+        case formal_a:     return "formal";
+        case local_a:      return "local";
+        case number_a:     return "number";
+        case string_a:     return "string";
+        case bool_a:       return "bool";
+        case nil_a:        return "nil";
+        case userfunc_a:   return "userfunc";
+        case libfunc_a:    return "libfunc";
+        case retval_a:     return "retval";
+        case notype_a:     return "";
+        default:           return "unknown";
     }
 }
