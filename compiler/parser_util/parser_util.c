@@ -901,6 +901,11 @@ parserUtil_printSymbolTable() {
     symtab_printScopeTable(table);
 }
 
+unsigned int
+parserUtil_getTotalGlobals() {
+    return symtab_getTotalGlobals(table);
+}
+
 /* ======================================== STATIC DEFINITIONS ======================================== */
 static int
 isSymbolLibraryFunction(const char* name) {

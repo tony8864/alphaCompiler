@@ -68,4 +68,7 @@ symtab_printCollisionTable(SymbolTable* table);
 void
 symtab_printScopeTable(SymbolTable* table);
 
+unsigned int
+symtab_getTotalGlobals(SymbolTable* table);
+
 #endif

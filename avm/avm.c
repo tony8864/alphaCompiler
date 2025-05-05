@@ -1,8 +1,9 @@
 #include "avm.h"
-#include "loader/loader.h"
+#include "dispatcher/dispatcher.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int main(int argc, char** argv) {
 
@@ -20,8 +21,8 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    loader_loadBinaryFile(binaryFile);
-    loader_loadCode();
+    dispatcher_initialize(binaryFile);
+    dispatcher_execute_cycle();
 
     fclose(binaryFile);
 

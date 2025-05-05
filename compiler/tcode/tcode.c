@@ -1,6 +1,7 @@
 #include "../symbol_table/symbol_table.h"
 #include "../scope_space/scope_space.h"
 #include "../func_stack/func_stack.h"
+#include "../parser_util/parser_util.h"
 #include "../quad/quad.h"
 
 #include "tcode.h"
@@ -227,6 +228,9 @@ writeLibFuncArray(FILE* file);
 static void
 writeCode(FILE* file);
 
+static void
+writeTotalGlobals(FILE* file);
+
 generator_func_t generators[] = {
     generate_ADD,
     generate_SUB,
@@ -340,6 +344,7 @@ tcode_createBinaryFile(char* filename) {
     writeMagicNumber(file);
     writeArrays(file);
     writeCode(file);
+    writeTotalGlobals(file);
 
     fclose(file);
 }
@@ -1175,4 +1180,11 @@ writeCode(FILE* file) {
         fprintf(file, "%u %u ", arg1.type, arg1.val);
         fprintf(file, "%u %u\n", arg2.type, arg2.val);
     }
+}
+
+static void
+writeTotalGlobals(FILE* file) {
+    unsigned int total;
+    total = parserUtil_getTotalGlobals();
+    fprintf(file, "%u", total);
 }

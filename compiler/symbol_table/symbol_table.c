@@ -340,6 +340,24 @@ symtab_printScopeTable(SymbolTable* table) {
     }
 }
 
+unsigned int
+symtab_getTotalGlobals(SymbolTable* table) {
+    unsigned int total = 0;
+    SymbolTableEntry* entry;
+    for (int i = 0; i < COLLISION_TABLE_SIZE; i++) {
+        entry = table->collisionTable[i];
+        while (entry) {
+            if (isVariableSymbol(entry->type)) {
+                if (entry->value.varValue->space == PROGRAMVAR) {
+                    total++;
+                }
+            }
+            entry = entry->collisionNext;
+        }
+    }
+    return total;
+}
+
 /* ======================================== STATIC DEFINITIONS ======================================== */
 void
 insertEntryInCollisionTable(SymbolTable* table, SymbolTableEntry* entry, unsigned int hashValue) {

@@ -1,5 +1,4 @@
 #include "loader.h"
-#include "../avm.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -21,6 +20,8 @@ unsigned totalUserFuncs = 0;
 
 instruction* instructions = NULL;
 unsigned codeSize;
+
+unsigned int totalGlobals;
 
 /* ------------------------------------ Static Declarations ------------------------------------ */
 static void
@@ -51,6 +52,9 @@ static void
 readVmarg(vmarg* arg);
 
 static void
+loadTotalGlobals();
+
+static void
 printStringArray();
 
 static void
@@ -64,6 +68,9 @@ printLibFuncs();
 
 static void
 print_instructions();
+
+static void
+print_totalGlobals();
 
 static const char*
 vmopcode_to_string(vmopcode op);
@@ -86,12 +93,49 @@ loader_loadCode() {
     readMagicNUmber();
     loadArrays();
     loadInstructions();
+    loadTotalGlobals();
 
-    printStringArray();
-    printNumArray();
-    printUserFuncs();
-    printLibFuncs();
-    print_instructions();
+    // printStringArray();
+    // printNumArray();
+    // printUserFuncs();
+    // printLibFuncs();
+    // print_instructions();
+    // print_totalGlobals();
+}
+
+double*
+loader_getNumConsts() {
+    assert(numConsts);
+    return numConsts;
+}
+
+char**
+loader_getStringConsts() {
+    assert(stringConsts);
+    return stringConsts;
+}
+
+char**
+loader_getLibFuncs() {
+    assert(namedLibFuncs);
+    return namedLibFuncs;
+}
+
+userfunc*
+loader_getUserFuncs() {
+    assert(userFuncs);
+    return userFuncs;
+}
+
+instruction*
+loader_getInstructions() {
+    assert(instructions);
+    return instructions;
+}
+
+unsigned
+loader_getCodeSize() {
+    return codeSize;
 }
 
 /* ------------------------------------ Static Definitions ------------------------------------ */
@@ -348,6 +392,19 @@ readVmarg(vmarg* arg) {
 
     arg->type = type;
     arg->val = value;
+}
+
+static void
+loadTotalGlobals() {
+    if (fscanf(binaryFile, "%u", &totalGlobals) != 1) {
+        printf("Error reading total globals from binary file.\n");
+        exit(1);
+    }
+}
+
+static void
+print_totalGlobals() {
+    printf("total globals: %u\n", totalGlobals);
 }
 
 static void

@@ -6,6 +6,10 @@
         "compare": "c",
         "stdlib.h": "c",
         "quad.h": "c",
-        "scope_space.h": "c"
+        "scope_space.h": "c",
+        "stdio.h": "c",
+        "dispatcher.h": "c",
+        "avm.h": "c",
+        "string.h": "c"
     }
 }

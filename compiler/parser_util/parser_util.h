@@ -193,4 +193,7 @@ parserUtil_handleFuncBlockStart();
 void
 parserUtil_handleFuncBlockEnd();
 
+unsigned int
+parserUtil_getTotalGlobals();
+
 #endif
