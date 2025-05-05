@@ -1,5 +1,5 @@
-#ifndef AVM_H
-#define AVM_H
+#ifndef AVM_TYPES
+#define AVM_TYPES
 
 typedef enum {
     assign_v,       add_v,          sub_v,
@@ -27,6 +27,10 @@ typedef enum {
     notype_a,
 } vmarg_t;
 
+typedef struct vmarg vmarg;
+typedef struct instruction instruction;
+typedef struct userfunc userfunc;
+
 typedef struct vmarg {
     vmarg_t type;
     unsigned val;
@@ -46,30 +50,5 @@ typedef struct userfunc {
     char* id;
 } userfunc;
 
-typedef enum {
-    number_m,
-    string_m,
-    bool_m,
-    table_m,
-    userfunc_m,
-    libfunc_m,
-    nil_m,
-    undef_m
-} avm_memcell_t;
-
-typedef struct avm_table {
-
-} avm_table;
-
-typedef struct avm_memcell {
-    avm_memcell_t type;
-    union {
-        double numVal;
-        char* strval;
-        unsigned char boolVal;
-        avm_table* tableVal;
-        char* libfuncVal;
-    } data;
-} avm_memcell;
 
 #endif

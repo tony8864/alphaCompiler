@@ -1,188 +1,148 @@
+#include "../avm_types.h"
 #include "loader.h"
 
-#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-FILE* binaryFile = NULL;
+typedef struct avm_constants {
+    double* numConsts;
+    char** stringConsts;
+    char** namedLibFuncs;
+    instruction* instructions;
+    userfunc* userFuncs;
 
-double* numConsts = NULL;
-unsigned totalNumConsts = 0;
+    unsigned totalNumConsts;
+    unsigned totalStringConsts;
+    unsigned totalNamedLibFuncs;
+    unsigned totalUserFuncs;
+    unsigned totalInstructions;
+} avm_constants;
 
-char** stringConsts = NULL;
-unsigned totalStringConsts = 0;
+static FILE* binaryFile = NULL;
 
-char** namedLibFuncs = NULL;
-unsigned totalNamedLibFuncs = 0;
-
-userfunc* userFuncs = NULL;
-unsigned totalUserFuncs = 0;
-
-instruction* instructions = NULL;
-unsigned codeSize;
-
-unsigned int totalGlobals;
-
-/* ------------------------------------ Static Declarations ------------------------------------ */
+/* ------------------------------------------ Static Declarations ------------------------------------------ */
 static void
-readMagicNUmber();
+read_magicNumber();
 
 static void
-loadArrays();
+read_strings(avm_constants* consts);
 
 static void
-loadStringArray();
+print_strings(avm_constants* consts);
 
 static void
-loadNumArray();
+read_nums(avm_constants* consts);
 
 static void
-loadUserFuncs();
+print_nums(avm_constants* consts);
 
 static void
-loadLibFuncs();
+read_userfuncs(avm_constants* consts);
 
 static void
-loadInstructions();
-
-static vmopcode
-readVmopcode();
+print_userfuncs(avm_constants* consts);
 
 static void
-readVmarg(vmarg* arg);
+read_libfuncs(avm_constants* consts);
 
 static void
-loadTotalGlobals();
+print_libfuncs(avm_constants* consts);
 
 static void
-printStringArray();
+read_instructions(avm_constants* consts);
 
 static void
-printNumArray();
+print_instructions(avm_constants* consts);
 
 static void
-printUserFuncs();
-
-static void
-printLibFuncs();
-
-static void
-print_instructions();
-
-static void
-print_totalGlobals();
-
-static const char*
-vmopcode_to_string(vmopcode op);
+read_vmarg(vmarg* arg);
 
 static char*
 vmarg_to_string(vmarg arg);
 
 static const char*
+vmopcode_to_string(vmopcode op);
+
+static const char*
 vmarg_type_to_string(vmarg_t type);
 
-/* ------------------------------------ Implementation ------------------------------------ */
+/* ------------------------------------------ Implementation ------------------------------------------ */
 void
-loader_loadBinaryFile(FILE* file) {
-    assert(file);
-    binaryFile = file;
+loader_openBinaryFile(char* filename) {
+    binaryFile = fopen(filename, "r");
+    if (!binaryFile) {
+        printf("Error opening binary file.\n");
+        exit(1);
+    }
 }
 
-void
-loader_loadCode() {
-    readMagicNUmber();
-    loadArrays();
-    loadInstructions();
-    loadTotalGlobals();
+avm_constants*
+loader_load_avm_constants() {
+    read_magicNumber();
 
-    // printStringArray();
-    // printNumArray();
-    // printUserFuncs();
-    // printLibFuncs();
-    // print_instructions();
-    // print_totalGlobals();
-}
+    avm_constants* consts;
 
-double*
-loader_getNumConsts() {
-    assert(numConsts);
-    return numConsts;
-}
-
-char**
-loader_getStringConsts() {
-    assert(stringConsts);
-    return stringConsts;
-}
-
-char**
-loader_getLibFuncs() {
-    assert(namedLibFuncs);
-    return namedLibFuncs;
-}
-
-userfunc*
-loader_getUserFuncs() {
-    assert(userFuncs);
-    return userFuncs;
-}
-
-instruction*
-loader_getInstructions() {
-    assert(instructions);
-    return instructions;
-}
-
-unsigned
-loader_getCodeSize() {
-    return codeSize;
-}
-
-/* ------------------------------------ Static Definitions ------------------------------------ */
-static void
-readMagicNUmber() {
-    int number;
-    if (fscanf(binaryFile, "%d", &number) != 1) {
-        printf("Error reading magic number from binary file.\n");
-        exit(EXIT_FAILURE);
+    consts = malloc(sizeof(avm_constants));
+    if (!consts) {
+        printf("Error allocating memory for avm consts.\n");
+        exit(1);
     }
 
-    if (number != 340200501) {
-        printf("Error: Magic number is incorrect.\n");
+    read_strings(consts);
+    read_nums(consts);
+    read_userfuncs(consts);
+    read_libfuncs(consts);
+    read_instructions(consts);
+
+    print_strings(consts);
+    print_nums(consts);
+    print_userfuncs(consts);
+    print_libfuncs(consts);
+    print_instructions(consts);
+}
+
+/* ------------------------------------------ Static Definitions ------------------------------------------ */
+static void
+read_magicNumber() {
+    unsigned magicNumber;
+    if (fscanf(binaryFile, "%u", &magicNumber) != 1) {
+        printf("Error reading magic number.\n");
+        exit(1);
+    }
+    
+    if (magicNumber != 340200501) {
+        printf("Magic number is incorrect.\n");
         exit(1);
     }
 }
 
 static void
-loadArrays() {
-    loadStringArray();
-    loadNumArray();
-    loadUserFuncs();
-    loadLibFuncs();
-}
+read_strings(avm_constants* consts) {
+    char** stringConsts;
+    unsigned totalStrings;
 
-static void
-loadStringArray() {
-    if (fscanf(binaryFile, "%u", &totalStringConsts) != 1) {
-        printf("Error reading total string consts from binary file.\n");
+    if (fscanf(binaryFile, "%u", &totalStrings) != 1) {
+        printf("Error reading total strings from binary file.\n");
         exit(1);
     }
 
-    stringConsts = malloc(sizeof(char*) * totalStringConsts);
+    stringConsts = malloc(sizeof(char*) * totalStrings);
     if (!stringConsts) {
-        printf("Error allocating memory for string consts array.\n");
+        printf("Error allocating memory for string consts.\n");
         exit(1);
     }
 
     int len;
     int ch;
-    for (int i = 0; i < totalStringConsts; i++) {
+
+    for (int i = 0; i < totalStrings; i++) {
         if (fscanf(binaryFile, "%d", &len) != 1) {
-            printf("Error reading length of string. %d\n", len);
+            printf("Error reading length of string.\n");
             exit(1);
         }
 
-        // consume space after strings length
+        // consume space
         fgetc(binaryFile);
 
         stringConsts[i] = malloc(sizeof(char) * (len + 1));
@@ -197,75 +157,97 @@ loadStringArray() {
                 printf("Error: Unexpected EOF while reading string.\n");
                 exit(1);
             }
-
             stringConsts[i][j] = (char) ch;
         }
-
         stringConsts[i][len] = '\0';
+    }
+
+    consts->stringConsts = stringConsts;
+    consts->totalStringConsts = totalStrings;
+}
+
+static void
+print_strings(avm_constants* consts) {
+    for (int i = 0; i < consts->totalStringConsts; i++) {
+        printf("%d: %s\n", i, consts->stringConsts[i]);
     }
 }
 
 static void
-loadNumArray() {
-    if (fscanf(binaryFile, "%u", &totalNumConsts) != 1) {
-        printf("Error reading total num consts from binary file.\n");
+read_nums(avm_constants* consts) {
+    unsigned totalNums;
+    double* numConsts;
+
+    if (fscanf(binaryFile, "%u", &totalNums) != 1) {
+        printf("Error reading total nums.\n");
         exit(1);
     }
 
-    numConsts = malloc(sizeof(double) * totalNumConsts);
+    numConsts = malloc(sizeof(double) * totalNums);
     if (!numConsts) {
         printf("Error allocating memory for num consts.\n");
         exit(1);
     }
 
-    int len;
     double n;
-    for (int i = 0; i < totalNumConsts; i++) {
+    for (int i = 0; i < totalNums; i++) {
         if (fscanf(binaryFile, "%lf", &n) != 1) {
             printf("Error reading num const.\n");
             exit(1);
         }
-
         numConsts[i] = n;
+    }
+
+    consts->totalNumConsts = totalNums;
+    consts->numConsts = numConsts;
+}
+
+static void
+print_nums(avm_constants* consts) {
+    for (int i = 0; i < consts->totalNumConsts; i++) {
+        printf("n_%d: %lf\n", i, consts->numConsts[i]);
     }
 }
 
 static void
-loadUserFuncs() {
-    if (fscanf(binaryFile, "%u", &totalUserFuncs) != 1) {
+read_userfuncs(avm_constants* consts) {
+    unsigned totalUserfuncs;
+    userfunc* userfuncs;
+
+    if (fscanf(binaryFile, "%u", &totalUserfuncs) != 1) {
         printf("Error reading total user funcs from binary file.\n");
         exit(1);
     }
 
-    userFuncs = malloc(sizeof(userfunc) * totalUserFuncs);
-    if (!userFuncs) {
+    userfuncs = malloc(sizeof(userfunc) * totalUserfuncs);
+    if (!userfuncs) {
         printf("Error allocating memory for user funcs.\n");
         exit(1);
     }
 
     userfunc f;
-    unsigned address;
-    unsigned localSize;
+    unsigned address, localsize;
     char* id;
     int len;
     char ch;
-    for (int i = 0; i < totalUserFuncs; i++) {
+
+    for (int i = 0; i < totalUserfuncs; i++) {
         if (fscanf(binaryFile, "%u", &address) != 1) {
             printf("Error reading address of user function.\n");
             exit(1);
         }
 
-        if (fscanf(binaryFile, "%u", &localSize) != 1) {
-            printf("Error reading local size of user function.\n");
+        if (fscanf(binaryFile, "%u", &localsize) != 1) {
+            printf("Error reading localsize of user function.\n");
             exit(1);
         }
 
         if (fscanf(binaryFile, "%d", &len) != 1) {
-            printf("Error reading length of user func. %d\n", len);
+            printf("Error reading len of user function.\n");
             exit(1);
         }
 
-        // consume space after reading user func len
+        // consume space
         fgetc(binaryFile);
 
         id = malloc(sizeof(char) * (len + 1));
@@ -280,180 +262,133 @@ loadUserFuncs() {
                 printf("Error: Unexpected EOF while reading user func.\n");
                 exit(1);
             }
-
             id[j] = (char) ch;
         }
-        
         id[len] = '\0';
 
-        userFuncs[i].address = address;
-        userFuncs[i].localSize = localSize;
-        userFuncs[i].id = id;
+        userfuncs[i].address = address;
+        userfuncs[i].localSize = localsize;
+        userfuncs[i].id = id;
+    }
+
+    consts->totalUserFuncs = totalUserfuncs;
+    consts->userFuncs = userfuncs;
+}
+
+static void
+print_userfuncs(avm_constants* consts) {
+    for (int i = 0; i < consts->totalUserFuncs; i++) {
+        userfunc f = consts->userFuncs[i];
+        printf("addr: %u locals: %u id: %s\n", f.address, f.localSize, f.id);
     }
 }
 
 static void
-loadLibFuncs() {
-    if (fscanf(binaryFile, "%u", &totalNamedLibFuncs) != 1) {
-        printf("Error reading total string consts from binary file.\n");
+read_libfuncs(avm_constants* consts) {
+    char** libfuncs;
+    unsigned totalLibs;
+
+    if (fscanf(binaryFile, "%u", &totalLibs) != 1) {
+        printf("Error reading total libs from binary file.\n");
         exit(1);
     }
 
-    namedLibFuncs = malloc(sizeof(char*) * totalNamedLibFuncs);
-    if (!namedLibFuncs) {
-        printf("Error allocating memory for string consts array.\n");
+    libfuncs = malloc(sizeof(char*) * totalLibs);
+    if (!libfuncs) {
+        printf("Error allocating memory for lib consts.\n");
         exit(1);
     }
 
     int len;
     int ch;
-    for (int i = 0; i < totalNamedLibFuncs; i++) {
+
+    for (int i = 0; i < totalLibs; i++) {
         if (fscanf(binaryFile, "%d", &len) != 1) {
-            printf("Error reading length of string. %d\n", len);
+            printf("Error reading length of lib name.\n");
             exit(1);
         }
 
-        // consume space after strings length
+        // consume space
         fgetc(binaryFile);
 
-        namedLibFuncs[i] = malloc(sizeof(char) * (len + 1));
-        if (!namedLibFuncs[i]) {
-            printf("Error allocating memory for const string.\n");
+        libfuncs[i] = malloc(sizeof(char) * (len + 1));
+        if (!libfuncs[i]) {
+            printf("Error allocating memory for const lib.\n");
             exit(1);
         }
 
         for (int j = 0; j < len; j++) {
             ch = fgetc(binaryFile);
             if (ch == EOF) {
-                printf("Error: Unexpected EOF while reading string.\n");
+                printf("Error: Unexpected EOF while reading lib name.\n");
                 exit(1);
             }
-
-            namedLibFuncs[i][j] = (char) ch;
+            libfuncs[i][j] = (char) ch;
         }
+        libfuncs[i][len] = '\0';
+    }
 
-        namedLibFuncs[i][len] = '\0';
+    consts->namedLibFuncs = libfuncs;
+    consts->totalNamedLibFuncs = totalLibs;
+}
+
+static void
+print_libfuncs(avm_constants* consts) {
+    for (int i = 0; i < consts->totalNamedLibFuncs; i++) {
+        printf("%d %s\n", i, consts->namedLibFuncs[i]);
     }
 }
 
 static void
-loadInstructions() {
-    if (fscanf(binaryFile, "%u", &codeSize) != 1) {
+read_instructions(avm_constants* consts) {
+    unsigned codesize;
+    instruction* code;
+    
+    if (fscanf(binaryFile, "%u", &codesize) != 1) {
         printf("Error reading code size from binary file.\n");
         exit(1);
     }
 
-    instructions = malloc(sizeof(instruction) * codeSize);
-    if (!instructions) {
-        printf("Error allocating memory for instructions.\n");
+    code = malloc(sizeof(instruction) * codesize);
+    if (!code) {
+        printf("Error allocating memory for code.\n");
         exit(1);
     }
 
-    vmarg result;
-    vmarg arg1;
-    vmarg arg2;
-    vmopcode op;
-    for (int i = 0; i < codeSize; i++) {
-        op = readVmopcode();
-        readVmarg(&result);
-        readVmarg(&arg1);
-        readVmarg(&arg2);
+    vmarg result, arg1, arg2;
+    vmopcode opcode;
 
-        instructions[i].opcode = op;
-        instructions[i].result = result;
-        instructions[i].arg1 = arg1;
-        instructions[i].arg2 = arg2;
-    }
-}
+    for (int i = 0; i < codesize; i++) {
+        if (fscanf(binaryFile, "%u", &opcode) != 1) {
+            printf("Error reading opcode.\n");
+            exit(1);
+        }
 
-static vmopcode
-readVmopcode() {
-    vmopcode op;
-    if (fscanf(binaryFile, "%u", &op) != 1) {
-        printf("Error reading opcode from binary file.\n");
-        exit(1);
+        read_vmarg(&result);
+        read_vmarg(&arg1);
+        read_vmarg(&arg2);
+
+        code[i].opcode = opcode;
+        code[i].result = result;
+        code[i].arg1 = arg1;
+        code[i].arg2 = arg2;
     }
-    return op;
+
+    consts->totalInstructions = codesize;
+    consts->instructions = code;
 }
 
 static void
-readVmarg(vmarg* arg) {
-    vmarg_t type;
-    unsigned value;
-    if (fscanf(binaryFile, "%u", &type) != 1) {
-        printf("Error reading vmarg type from binary file.\n");
-        exit(1);
-    }
-
-    if (fscanf(binaryFile, "%u", &value) != 1) {
-        printf("Error reading vmarg value from binary file.\n");
-        exit(1);
-    }
-
-    arg->type = type;
-    arg->val = value;
-}
-
-static void
-loadTotalGlobals() {
-    if (fscanf(binaryFile, "%u", &totalGlobals) != 1) {
-        printf("Error reading total globals from binary file.\n");
-        exit(1);
-    }
-}
-
-static void
-print_totalGlobals() {
-    printf("total globals: %u\n", totalGlobals);
-}
-
-static void
-printStringArray() {
-    char* str;
-    for (int i = 0; i < totalStringConsts; i++) {
-        str = stringConsts[i];
-        printf("%d: %s\n", i, str);
-    }
-}
-
-static void
-printNumArray() {
-    double n;
-    for (int i = 0; i < totalNumConsts; i++) {
-        n = numConsts[i];
-        printf("%d: %f\n", i, numConsts[i]);
-    }
-}
-
-static void
-printUserFuncs() {
-    userfunc f;
-    for (int i = 0; i < totalUserFuncs; i++) {
-        f = userFuncs[i];
-        printf("%u %u %s\n", f.address, f.localSize, f.id);
-    }
-}
-
-static void
-printLibFuncs() {
-    char* lib;
-    for (int i = 0; i < totalNamedLibFuncs; i++) {
-        lib = namedLibFuncs[i];
-        printf("%d: %s\n", i, lib);
-    }
-}
-
-static void
-print_instructions() {
-    fprintf(stdout, "---------------------------------------------INSTRUCTIONS---------------------------------------------\n");
-    fprintf(stdout, "%-10s %-20s %-20s %-20s %-20s %-10s\n",
+print_instructions(avm_constants* consts) {
+    printf("---------------------------------------------INSTRUCTIONS---------------------------------------------\n");
+    printf("%-10s %-20s %-20s %-20s %-20s %-10s\n",
          "Instr.", "opcode", "result", "arg1", "arg2", "line");
-    fprintf(stdout, "---------------------------------------------------------------------------------------------------------\n");
-    
-    for (int i = 0; i < codeSize; i++) {
-        instruction instr = instructions[i];
+    printf("---------------------------------------------------------------------------------------------------------\n");
 
-        fprintf(stdout, "%-10d %-20s %-20s %-20s %-20s %-10d\n",
+    for (int i = 0; i < consts->totalInstructions; i++) {
+        instruction instr = consts->instructions[i];
+
+        printf("%-10d %-20s %-20s %-20s %-20s %-10d\n",
             i,
             vmopcode_to_string(instr.opcode),
             vmarg_to_string(instr.result),
@@ -462,7 +397,45 @@ print_instructions() {
             instr.srcLine
         );
     }
-    fprintf(stdout, "\n");
+    printf("\n");
+}
+
+static void
+read_vmarg(vmarg* arg) {
+    vmarg_t type;
+    unsigned value;
+
+    if (fscanf(binaryFile, "%u", &type) != 1) {
+        printf("Error reading vmarg type.\n");
+        exit(1);
+    }
+
+    if (fscanf(binaryFile, "%u", &value) != 1) {
+        printf("Error reading vmarg value.\n");
+        exit(1);
+    }
+
+    arg->type = type;
+    arg->val = value;
+}
+
+static char*
+vmarg_to_string(vmarg arg) {
+
+    if (arg.type == notype_a) {
+        return "";
+    }
+
+    const char* type_str = vmarg_type_to_string(arg.type);
+
+    char* result = malloc(64);
+    if (!result) {
+        fprintf(stderr, "Error: malloc failed in vmarg_to_string.\n");
+        exit(1);
+    }
+
+    snprintf(result, 64, "[%s, %u]", type_str, arg.val);
+    return result;
 }
 
 static const char*
@@ -495,25 +468,6 @@ vmopcode_to_string(vmopcode op) {
         case nop_v:          return "nop_v";
         default:             return "UNKNOWN_OPCODE";
     }
-}
-
-static char*
-vmarg_to_string(vmarg arg) {
-
-    if (arg.type == notype_a) {
-        return "";
-    }
-
-    const char* type_str = vmarg_type_to_string(arg.type);
-
-    char* result = malloc(64);
-    if (!result) {
-        fprintf(stderr, "Error: malloc failed in vmarg_to_string.\n");
-        exit(1);
-    }
-
-    snprintf(result, 64, "[%s, %u]", type_str, arg.val);
-    return result;
 }
 
 static const char*

@@ -1,31 +1,12 @@
 #ifndef LOADER_H
 #define LOADER_H
 
-#include "../avm.h"
-#include <stdio.h>
+typedef struct avm_constants avm_constants;
 
 void
-loader_loadBinaryFile(FILE* file);
+loader_openBinaryFile(char* filename);
 
-void
-loader_loadCode();
-
-double*
-loader_getNumConsts();
-
-char**
-loader_getStringConsts();
-
-char**
-loader_getLibFuncs();
-
-userfunc*
-loader_getUserFuncs();
-
-instruction*
-loader_getInstructions();
-
-unsigned
-loader_getCodeSize();
+avm_constants*
+loader_load_avm_constants();
 
 #endif
