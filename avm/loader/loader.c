@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 typedef struct avm_constants {
     double* numConsts;
@@ -22,6 +23,9 @@ typedef struct avm_constants {
 static FILE* binaryFile = NULL;
 
 /* ------------------------------------------ Static Declarations ------------------------------------------ */
+static void
+open_binaryFile(char* filename);
+
 static void
 read_magicNumber();
 
@@ -68,17 +72,11 @@ static const char*
 vmarg_type_to_string(vmarg_t type);
 
 /* ------------------------------------------ Implementation ------------------------------------------ */
-void
-loader_openBinaryFile(char* filename) {
-    binaryFile = fopen(filename, "r");
-    if (!binaryFile) {
-        printf("Error opening binary file.\n");
-        exit(1);
-    }
-}
-
 avm_constants*
-loader_load_avm_constants() {
+loader_load_avm_constants(char* filename) {
+
+    open_binaryFile(filename);
+
     read_magicNumber();
 
     avm_constants* consts;
@@ -100,9 +98,38 @@ loader_load_avm_constants() {
     print_userfuncs(consts);
     print_libfuncs(consts);
     print_instructions(consts);
+
+    return consts;
+}
+
+double
+loader_consts_getnumber(avm_constants* consts, unsigned index) {
+    assert(consts && consts->numConsts && (index < consts->totalNumConsts));
+    return consts->numConsts[index];
+}
+
+instruction*
+loader_getcode(avm_constants* consts) {
+    assert(consts && consts->instructions);
+    return consts->instructions;
+}
+
+unsigned
+loader_getcodeSize(avm_constants* consts) {
+    assert(consts && consts->totalInstructions);
+    return consts->totalInstructions;
 }
 
 /* ------------------------------------------ Static Definitions ------------------------------------------ */
+static void
+open_binaryFile(char* filename) {
+    binaryFile = fopen(filename, "r");
+    if (!binaryFile) {
+        printf("Error opening binary file.\n");
+        exit(1);
+    }
+}
+
 static void
 read_magicNumber() {
     unsigned magicNumber;

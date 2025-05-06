@@ -3,10 +3,16 @@
 
 typedef struct avm_constants avm_constants;
 
-void
-loader_openBinaryFile(char* filename);
-
 avm_constants*
-loader_load_avm_constants();
+loader_load_avm_constants(char* filename);
+
+double
+loader_consts_getnumber(avm_constants* consts, unsigned index);
+
+instruction*
+loader_getcode(avm_constants* consts);
+
+unsigned
+loader_getcodeSize(avm_constants* consts);
 
 #endif

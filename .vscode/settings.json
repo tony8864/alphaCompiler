@@ -10,6 +10,8 @@
         "stdio.h": "c",
         "dispatcher.h": "c",
         "avm.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "assert.h": "c",
+        "avm_types.h": "c"
     }
 }

@@ -27,10 +27,6 @@ typedef enum {
     notype_a,
 } vmarg_t;
 
-typedef struct vmarg vmarg;
-typedef struct instruction instruction;
-typedef struct userfunc userfunc;
-
 typedef struct vmarg {
     vmarg_t type;
     unsigned val;
@@ -50,5 +46,64 @@ typedef struct userfunc {
     char* id;
 } userfunc;
 
+typedef struct avm_table {
+
+} avm_table;
+
+typedef enum {
+    number_m,
+    string_m,
+    bool_m,
+    table_m,
+    userfunc_m,
+    libfunc_m,
+    nil_m,
+    undef_m
+} avm_memcell_t;
+
+typedef struct avm_memcell {
+    avm_memcell_t type;
+    union {
+        double numVal;
+        char* strVal;
+        unsigned char boolVal;
+        avm_table* tableVal;
+        unsigned funcVal;
+        char* libfuncVal;
+    } data;
+} avm_memcell;
+
+// avm
+extern unsigned         codeSize;
+extern instruction*     code;
+
+extern avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg);
+
+extern void avm_warning(char* str);
+
+// memory
+#define AVM_STACKENV_SIZE   4
+#define AVM_STACKSIZE       4094
+#define N                   AVM_STACKSIZE
+
+extern avm_memcell stack[AVM_STACKSIZE];
+extern avm_memcell   ax, bx, cx;
+extern avm_memcell   retval;
+extern unsigned top, topsp;
+
+extern void avm_memcellclear(avm_memcell* m);
+
+// dispatcher
+#define AVM_ENDING_PC           codeSize
+#define AVM_MAX_INSTRUCTIONS    (unsigned) nop_v
+
+extern unsigned char    executionFinished;
+extern unsigned         pc;
+
+// loader
+extern double       consts_getnumber    (unsigned i);
+extern char*        consts_getstring    (unsigned i);
+extern char*        libfuncs_getused    (unsigned i);
+extern userfunc*    userfucns_getfunc   (unsigned i);
 
 #endif
