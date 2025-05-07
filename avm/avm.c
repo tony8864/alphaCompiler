@@ -61,7 +61,11 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg) {
             return reg;
         }
         case string_a: break;
-        case bool_a: break;
+        case bool_a: {
+            reg->type = bool_m;
+            reg->data.boolVal = arg->val;
+            return reg;
+        }
         case nil_a: break;
         case userfunc_a: break;
         case libfunc_a: break;

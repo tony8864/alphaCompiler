@@ -1035,7 +1035,6 @@ patch_incomplete_jumps() {
 
 static void
 backpatch(RetList* rlist) {
-    funcStack_printRetList(rlist);
     RetNode* curr;
     unsigned int ret;
 

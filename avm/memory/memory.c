@@ -2,6 +2,7 @@
 
 #include "memory.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -41,6 +42,7 @@ memory_initstack() {
 void avm_memcellclear(avm_memcell* m) {
     if (m->type != undef_m) {
         memclear_func_t f = memclearFuncs[m->type];
+        
         if (f) {
             (*f)(m);
         }
