@@ -7,6 +7,11 @@
 
 static unsigned totalActuals = 0;
 
+#define AVM_NUMACTUALS_OFFSET   4
+#define AVM_SAVEDPC_OFFSET      3
+#define AVM_SAVEDTOP_OFFSET     2
+#define AVM_SAVEDTOPSP_OFFSET   1
+
 /* ------------------------------------------- Static Declarations ------------------------------------------- */
 static void
 avm_calllibfunc(char* id);
@@ -91,13 +96,11 @@ void
 execute_call(instruction* instr) {
     avm_memcell* func = avm_translate_operand(&instr->arg1, &ax);
     assert(func);
-    printf("func type: %u pc: %u\n", func->type, pc);
     switch (func->type) {
         case userfunc_m: {
             avm_callsaveenvironment();
             pc = func->data.funcVal;
             assert(code[pc].opcode == funcenter_v);
-            printf("calling user func.\n");
             break;
         }
         case string_m: {
@@ -117,17 +120,37 @@ execute_call(instruction* instr) {
 
 void
 execute_pusharg(instruction* instr) {
+    avm_memcell* arg = avm_translate_operand(&instr->arg1, &ax);
+    assert(arg);
 
+    avm_assign(&stack[top], arg);
+    ++totalActuals;
+    avm_dec_top();
 }
 
 void
 execute_funcenter(instruction* instr) {
+    avm_memcell* func = avm_translate_operand(&instr->arg1, &ax);
+    assert(func);
+    assert(pc == func->data.funcVal);
 
+    totalActuals = 0;
+    userfunc funcInfo = avm_getfuncinfo(instr->arg1.val);
+    topsp = top;
+    top = top - funcInfo.localSize;
 }
 
 void
 execute_funcexit(instruction* instr) {
-    
+    unsigned oldTop = top;
+
+    top = avm_get_envnvalue(topsp + AVM_SAVEDTOP_OFFSET);
+    pc = avm_get_envnvalue(topsp + AVM_SAVEDPC_OFFSET);
+    topsp = avm_get_envnvalue(topsp + AVM_SAVEDTOPSP_OFFSET);
+
+    while (++oldTop <= top) {
+        avm_memcellclear(&stack[oldTop]);
+    }
 }
 
 /* ------------------------------------------- Extern Definition ------------------------------------------- */

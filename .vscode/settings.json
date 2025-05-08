@@ -12,6 +12,7 @@
         "avm.h": "c",
         "string.h": "c",
         "assert.h": "c",
-        "avm_types.h": "c"
+        "avm_types.h": "c",
+        "function.h": "c"
     }
 }

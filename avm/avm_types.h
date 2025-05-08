@@ -80,6 +80,8 @@ extern instruction*     code;
 extern avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg);
 
 extern void avm_warning(char* str);
+extern userfunc avm_getfuncinfo(unsigned i);
+extern void avm_assign(avm_memcell* lv, avm_memcell* rv);
 
 // memory
 #define AVM_STACKENV_SIZE   4
@@ -101,11 +103,5 @@ extern void registerlibfuncs();
 
 extern unsigned char    executionFinished;
 extern unsigned         pc;
-
-// loader
-extern double       consts_getnumber    (unsigned i);
-extern char*        consts_getstring    (unsigned i);
-extern char*        libfuncs_getused    (unsigned i);
-extern userfunc*    userfucns_getfunc   (unsigned i);
 
 #endif

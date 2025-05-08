@@ -124,6 +124,12 @@ loader_consts_getuserfunc(avm_constants* consts, unsigned index) {
     return consts->userFuncs[index];
 }
 
+char*
+loader_consts_getstring(avm_constants* consts, unsigned index) {
+    assert(consts && consts->stringConsts && (index < consts->totalStringConsts));
+    return consts->stringConsts[index];
+}
+
 unsigned
 loader_getTotalGlobals(avm_constants* consts) {
     assert(consts);

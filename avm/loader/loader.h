@@ -12,6 +12,9 @@ loader_consts_getnumber(avm_constants* consts, unsigned index);
 userfunc
 loader_consts_getuserfunc(avm_constants* consts, unsigned index);
 
+char*
+loader_consts_getstring(avm_constants* consts, unsigned index);
+
 unsigned
 loader_getTotalGlobals(avm_constants* consts);
 
