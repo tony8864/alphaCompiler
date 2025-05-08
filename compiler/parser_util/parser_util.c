@@ -615,12 +615,14 @@ parserUtil_handleArithmeticExpr(Expr* expr1, Expr* expr2, IOPCodeType op, unsign
 
     Expr* e;
 
-    if (icode_getExprType(expr1) == constnum_e && icode_getExprType(expr2)) {
-        e = handleConstnumArithmExpression(expr1, expr2, op, line);
-    }
-    else {
-        e = handleArithmeticExpression(expr1, expr2, op, line);
-    }
+    // if (icode_getExprType(expr1) == constnum_e && icode_getExprType(expr2)) {
+    //     e = handleConstnumArithmExpression(expr1, expr2, op, line);
+    // }
+    // else {
+    //     e = handleArithmeticExpression(expr1, expr2, op, line);
+    // }
+
+    e = handleArithmeticExpression(expr1, expr2, op, line);
 
     return e;
 }

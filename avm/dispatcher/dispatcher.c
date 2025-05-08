@@ -5,6 +5,7 @@
 #include "../executors/relational.h"
 #include "../executors/assign.h"
 #include "../executors/equal.h"
+#include "../executors/function.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +50,11 @@ execute_func_t executeFuncs[] = {
     execute_jle,
     execute_jge,
     execute_jlt,
-    execute_jgt
+    execute_jgt,
+    execute_call,
+    execute_pusharg,
+    execute_funcenter,
+    execute_funcexit,
 };
 
 void

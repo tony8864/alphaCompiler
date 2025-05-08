@@ -32,7 +32,8 @@ memclear_func_t memclearFuncs[] = {
 };
 
 void
-memory_initstack() {
+memory_initstack(unsigned totalGlobals) {
+    top = AVM_STACKSIZE - 1 - totalGlobals;
     for (int i = 0; i < AVM_STACKSIZE; i++) {
         memset(&stack[i], 0, sizeof(stack[i]));
         stack[i].type = undef_m;

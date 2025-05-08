@@ -97,6 +97,8 @@ extern void avm_memcellclear(avm_memcell* m);
 #define AVM_ENDING_PC           codeSize
 #define AVM_MAX_INSTRUCTIONS    (unsigned) nop_v
 
+extern void registerlibfuncs();
+
 extern unsigned char    executionFinished;
 extern unsigned         pc;
 

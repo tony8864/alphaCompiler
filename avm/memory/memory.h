@@ -2,6 +2,6 @@
 #define MEMORY_H
 
 void
-memory_initstack();
+memory_initstack(unsigned totalGlobals);
 
 #endif

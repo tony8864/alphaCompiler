@@ -18,6 +18,8 @@ typedef struct avm_constants {
     unsigned totalNamedLibFuncs;
     unsigned totalUserFuncs;
     unsigned totalInstructions;
+
+    unsigned totalGlobals;
 } avm_constants;
 
 static FILE* binaryFile = NULL;
@@ -60,6 +62,12 @@ static void
 print_instructions(avm_constants* consts);
 
 static void
+read_totalGlobals(avm_constants* consts);
+
+static void
+print_totalGlobals(avm_constants* consts);
+
+static void
 read_vmarg(vmarg* arg);
 
 static char*
@@ -92,12 +100,14 @@ loader_load_avm_constants(char* filename) {
     read_userfuncs(consts);
     read_libfuncs(consts);
     read_instructions(consts);
+    read_totalGlobals(consts);
 
     print_strings(consts);
     print_nums(consts);
     print_userfuncs(consts);
     print_libfuncs(consts);
     print_instructions(consts);
+    print_totalGlobals(consts);
 
     return consts;
 }
@@ -106,6 +116,18 @@ double
 loader_consts_getnumber(avm_constants* consts, unsigned index) {
     assert(consts && consts->numConsts && (index < consts->totalNumConsts));
     return consts->numConsts[index];
+}
+
+userfunc
+loader_consts_getuserfunc(avm_constants* consts, unsigned index) {
+    assert(consts && consts->userFuncs && (index < consts->totalUserFuncs));
+    return consts->userFuncs[index];
+}
+
+unsigned
+loader_getTotalGlobals(avm_constants* consts) {
+    assert(consts);
+    return consts->totalGlobals;
 }
 
 instruction*
@@ -425,6 +447,21 @@ print_instructions(avm_constants* consts) {
         );
     }
     printf("\n");
+}
+
+static void
+read_totalGlobals(avm_constants* consts) {
+    unsigned totalGlobals;
+    if (fscanf(binaryFile, "%u", &totalGlobals) != 1) {
+        printf("Error reading total globals from binary file.\n");
+        exit(1);
+    }
+    consts->totalGlobals = totalGlobals;
+}
+
+static void
+print_totalGlobals(avm_constants* consts) {
+    printf("Total globals: %u\n", consts->totalGlobals);
 }
 
 static void

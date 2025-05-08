@@ -9,8 +9,9 @@
 #include "memory/memory.h"
 #include "dispatcher/dispatcher.h"
 
-#define consts_number(index) loader_consts_getnumber(consts, index)
-
+#define consts_number(index)    loader_consts_getnumber(consts, index)
+#define consts_userfunc(index)  loader_consts_getuserfunc(consts, index)
+#define total_globals()         loader_getTotalGlobals(consts)
 static avm_constants* consts;
 
 unsigned codeSize = 0;
@@ -29,10 +30,10 @@ int main(int argc, char** argv) {
     }
 
     binFilename = argv[1];
-
-    memory_initstack();
+    
     loader_init(binFilename);
-
+    memory_initstack(total_globals());
+    
     while (!isExecutionFinished()) {
         execute_cycle();
     }
@@ -58,6 +59,7 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg) {
         case number_a: {
             reg->type = number_m;
             reg->data.numVal = consts_number(arg->val);
+            
             return reg;
         }
         case string_a: break;
@@ -67,7 +69,12 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg) {
             return reg;
         }
         case nil_a: break;
-        case userfunc_a: break;
+        case userfunc_a: {
+            userfunc f = consts_userfunc(arg->val);
+            reg->type = userfunc_m;
+            reg->data.funcVal = f.address;
+            break;
+        }
         case libfunc_a: break;
         default: assert(0);
     }
