@@ -13,6 +13,9 @@ userfunc
 loader_consts_getuserfunc(avm_constants* consts, unsigned index);
 
 char*
+loader_consts_getlibfunc(avm_constants* consts, unsigned index);
+
+char*
 loader_consts_getstring(avm_constants* consts, unsigned index);
 
 unsigned

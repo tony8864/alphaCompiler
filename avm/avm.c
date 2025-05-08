@@ -11,6 +11,7 @@
 
 #define consts_number(index)    loader_consts_getnumber(consts, index)
 #define consts_userfunc(index)  loader_consts_getuserfunc(consts, index)
+#define consts_libfunc(index)   loader_consts_getlibfunc(consts, index);
 #define consts_string(index)    loader_consts_getstring(consts, index)
 #define total_globals()         loader_getTotalGlobals(consts)
 static avm_constants* consts;
@@ -88,7 +89,11 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg) {
             reg->data.funcVal = f.address;
             break;
         }
-        case libfunc_a: break;
+        case libfunc_a: {
+            reg->type = libfunc_m;
+            reg->data.libfuncVal = consts_libfunc(arg->val);
+            return reg;
+        }
         default: assert(0);
     }
 }
@@ -119,8 +124,6 @@ avm_assign(avm_memcell* lv, avm_memcell* rv) {
     else if (lv->type == table_m) {
         // increment ref counter
     }
-
-    printf("lv is %u\n", (int)lv->data.numVal);
 }
 
 void avm_warning(char* str) {

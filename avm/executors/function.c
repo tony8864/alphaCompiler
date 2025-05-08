@@ -28,6 +28,21 @@ avm_get_envnvalue(unsigned i);
 static void
 avm_callsaveenvironment();
 
+static unsigned
+avm_totalactuals();
+
+static avm_memcell*
+avm_getactual(unsigned i);
+
+static char*
+avm_tostring(avm_memcell* m);
+
+static char*
+number_tostring(avm_memcell* m);
+
+static char*
+string_tostring(avm_memcell* m);
+
 static void
 libfunc_print();
 
@@ -65,6 +80,7 @@ static void
 libfunc_sin();
 
 typedef void (*library_func_t)(void);
+typedef char* (*tostring_func_t)(avm_memcell*);
 
 typedef struct {
     char* name;
@@ -87,6 +103,11 @@ libfunc_entry libfuncMap[] = {
 };
 
 #define LIBFUNC_COUNT (sizeof(libfuncMap) / sizeof(libfuncMap[0]))
+
+tostring_func_t tostringFuncs[] = {
+    number_tostring,
+    string_tostring
+};
 
 static library_func_t
 get_libfunc(char* name);
@@ -167,7 +188,18 @@ get_libfunc(char* name) {
 }
 
 static void avm_calllibfunc(char* id) {
+    library_func_t f = get_libfunc(id);
 
+    if (!f) {
+        printf("Unsupported lib func %s called.\n", id);
+        exit(1);
+    }
+
+    avm_callsaveenvironment();
+    topsp = top;
+    totalActuals = 0;
+    (*f)();
+    execute_funcexit(NULL);
 }
 
 static void
@@ -205,9 +237,43 @@ avm_callsaveenvironment() {
     avm_push_envvalue(topsp);
 }
 
+static char*
+avm_tostring(avm_memcell* m) {
+    assert(m->type >= 0 && m->type <= undef_m);
+    return (*tostringFuncs[m->type])(m);
+}
+
+static char*
+number_tostring(avm_memcell* m) {
+    char str[100];
+    sprintf(str, "%f", m->data.numVal);
+    return strdup(str);
+}
+
+static char*
+string_tostring(avm_memcell* m) {
+    return strdup(m->data.strVal);
+}
+
+static unsigned
+avm_totalactuals() {
+    return avm_get_envnvalue(top + AVM_NUMACTUALS_OFFSET);
+}
+
+static avm_memcell*
+avm_getactual(unsigned i) {
+    assert(i < avm_totalactuals());
+    return &stack[top + AVM_STACKENV_SIZE + 1 + i];
+}
+
 static void
 libfunc_print() {
-
+    unsigned n = avm_totalactuals();
+    for (unsigned i = 0; i < n; i++) {
+        char* s = avm_tostring(avm_getactual(i));
+        puts(s);
+        free(s);
+    }
 }
 
 static void

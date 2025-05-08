@@ -102,12 +102,12 @@ loader_load_avm_constants(char* filename) {
     read_instructions(consts);
     read_totalGlobals(consts);
 
-    print_strings(consts);
-    print_nums(consts);
-    print_userfuncs(consts);
-    print_libfuncs(consts);
-    print_instructions(consts);
-    print_totalGlobals(consts);
+    // print_strings(consts);
+    // print_nums(consts);
+    // print_userfuncs(consts);
+    // print_libfuncs(consts);
+    // print_instructions(consts);
+    // print_totalGlobals(consts);
 
     return consts;
 }
@@ -122,6 +122,12 @@ userfunc
 loader_consts_getuserfunc(avm_constants* consts, unsigned index) {
     assert(consts && consts->userFuncs && (index < consts->totalUserFuncs));
     return consts->userFuncs[index];
+}
+
+char*
+loader_consts_getlibfunc(avm_constants* consts, unsigned index) {
+    assert(consts && consts->namedLibFuncs && (index < consts->totalNamedLibFuncs));
+    return consts->namedLibFuncs[index];
 }
 
 char*
