@@ -20,6 +20,18 @@ typedef struct avm_table {
 } avm_table;
 
 /* ---------------------------------- Static Declarations ---------------------------------- */
+static avm_table*
+avm_tablenew();
+
+static void
+avm_tabledestroy(avm_table* t);
+
+static avm_memcell*
+avm_tablegetelem(avm_table* table, avm_memcell* index);
+
+static void
+avm_tablesetelem(avm_table* table, avm_memcell* index, avm_memcell* content);
+
 static void
 avm_tableIncrementRefCounter(avm_table* t);
 
@@ -34,6 +46,9 @@ avm_tablebucketsdestroy(avm_table_bucket** p);
 
 static unsigned
 hash_string(const char* str);
+
+static unsigned
+hash_int(int key);
 
 /* ---------------------------------- Implementation ---------------------------------- */
 void
@@ -94,7 +109,8 @@ execute_tablesetelem(instruction* instr) {
     avm_tablesetelem(t->data.tableVal, i, c);
 }
 
-avm_table*
+/* ---------------------------------- Static Definitions ---------------------------------- */
+static avm_table*
 avm_tablenew() {
     avm_table* t = malloc(sizeof(avm_table));
     memset(t, 0, sizeof(t));
@@ -106,14 +122,14 @@ avm_tablenew() {
     return t;
 }
 
-void
+static void
 avm_tabledestroy(avm_table* t) {
     avm_tablebucketsdestroy(t->strIndexed);
     avm_tablebucketsdestroy(t->numIndexed);
     free(t);
 }
 
-avm_memcell*
+static avm_memcell*
 avm_tablegetelem(avm_table* table, avm_memcell* index) {
     avm_table_bucket* curr;
     avm_table_bucket* prev;
@@ -133,7 +149,17 @@ avm_tablegetelem(avm_table* table, avm_memcell* index) {
             break;
         }
         case number_m: {
+            unsigned int hash = hash_int((int)index->data.numVal);
+            curr = table->numIndexed[hash];
 
+            while (curr) {
+                prev = curr;
+                if (curr->key.data.numVal == index->data.numVal) {
+                    return &(curr->value);
+                }
+                curr = curr->next;
+            }
+            break;
         }
         default: {
             printf("table index type not supported.\n");
@@ -142,7 +168,7 @@ avm_tablegetelem(avm_table* table, avm_memcell* index) {
     }
 }
 
-void
+static void
 avm_tablesetelem(avm_table* table, avm_memcell* index, avm_memcell* content) {
 
     avm_table_bucket* curr;
@@ -192,7 +218,39 @@ avm_tablesetelem(avm_table* table, avm_memcell* index, avm_memcell* content) {
             break;
         }
         case number_m: {
+            unsigned int hash = hash_int((int)index->data.numVal);
+            curr = table->numIndexed[hash];
+            prev = NULL;
 
+            while (curr) {
+                prev = curr;
+                if (curr->key.data.numVal == index->data.numVal) {
+                    curr->value = *content;
+                    return;
+                }
+                curr = curr->next;
+            }
+
+            avm_table_bucket* node;
+
+            node = malloc(sizeof(avm_table_bucket));
+
+            if (!node) {
+                printf("Error allocating memory for new bucket node.\n");
+                exit(1);
+            }
+
+            node->next = NULL;
+            node->key = *index;
+            node->value = *content;
+
+            if (prev == NULL) {
+                table->numIndexed[hash] = node;
+            }
+            else {
+                prev->next = node;
+            }
+            break;
         }
         default: {
             printf("table index type not supported.\n");
@@ -201,7 +259,6 @@ avm_tablesetelem(avm_table* table, avm_memcell* index, avm_memcell* content) {
     }
 }
 
-/* ---------------------------------- Static Definitions ---------------------------------- */
 static void
 avm_tableIncrementRefCounter(avm_table* t) {
     ++t->refCounter;
@@ -246,4 +303,13 @@ hash_string(const char* str) {
     }
 
     return hash % AVM_TABLE_HASHSIZE;
+}
+
+static unsigned
+hash_int(int key) {
+    unsigned int ukey = (unsigned int)key;
+
+    ukey = (ukey * 2654435761u);
+
+    return ukey % AVM_TABLE_HASHSIZE;
 }
