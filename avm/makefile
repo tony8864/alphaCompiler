@@ -9,8 +9,10 @@ OBJECTS = \
 	${OBJ_DIR}/relational.o \
 	${OBJ_DIR}/assign.o \
 	${OBJ_DIR}/equal.o \
-	${OBJ_DIR}/function.o
+	${OBJ_DIR}/function.o \
+	${OBJ_DIR}/tables.o
 
+TABLES_EXE_C = tables/tables.c
 FUNCTION_EXE_C = executors/function.c
 EQUAL_EXE_C = executors/equal.c
 RELATIONAL_EXE_c = executors/relational.c
@@ -51,6 +53,9 @@ ${OBJ_DIR}/equal.o: ${EQUAL_EXE_C} | ${OBJ_DIR}
 	gcc -c $< -o $@
 
 ${OBJ_DIR}/function.o: ${FUNCTION_EXE_C} | ${OBJ_DIR}
+	gcc -c $< -o $@
+
+${OBJ_DIR}/tables.o: ${TABLES_EXE_C} | ${OBJ_DIR}
 	gcc -c $< -o $@
 
 clean:

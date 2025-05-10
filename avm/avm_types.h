@@ -46,9 +46,7 @@ typedef struct userfunc {
     char* id;
 } userfunc;
 
-typedef struct avm_table {
-
-} avm_table;
+typedef struct avm_table avm_table;
 
 typedef enum {
     number_m,
@@ -72,6 +70,8 @@ typedef struct avm_memcell {
         char* libfuncVal;
     } data;
 } avm_memcell;
+
+
 
 // avm
 extern unsigned         codeSize;

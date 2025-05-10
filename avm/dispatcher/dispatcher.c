@@ -7,6 +7,8 @@
 #include "../executors/equal.h"
 #include "../executors/function.h"
 
+#include "../tables/tables.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -55,6 +57,9 @@ execute_func_t executeFuncs[] = {
     execute_pusharg,
     execute_funcenter,
     execute_funcexit,
+    execute_newtable,
+    execute_tablegetelem,
+    execute_tablesetelem
 };
 
 void
